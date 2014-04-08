@@ -1,12 +1,14 @@
 # Signature
 
-TODO: Write a gem description
+Signature is a [Paperclip](https://github.com/thoughtbot/paperclip "Paperclip")-based PDF document signature tool for Ruby on Rails.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
+```ruby
     gem 'signature'
+```
 
 And then execute:
 
@@ -20,10 +22,12 @@ Or install it yourself as:
 
 TODO: Write usage instructions here
 
-## Contributing
+##License
 
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+Signature is &copy; 2014 Zane Ma - All Rights Reserved.
+
+Unauthorized copying of this project, via any medium is strictly prohibited.
+
+Confidential
+
+Written by Zane Ma <amenaz1@gmail.com>, April 2014

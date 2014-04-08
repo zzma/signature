@@ -6,12 +6,12 @@ require 'signature/version'
 Gem::Specification.new do |spec|
   spec.name          = "signature"
   spec.version       = Signature::VERSION
-  spec.authors       = ["zanema"]
+  spec.authors       = ["Zane Ma"]
   spec.email         = ["amenaz1@gmail.com"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
+  spec.description   = %q{Easy signature document management for ActiveRecord}
+  spec.summary       = %q{Signature PDF documents as attributes for ActiveRecord}
   spec.homepage      = ""
-  spec.license       = "MIT"
+  #spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
