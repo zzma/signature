@@ -7,7 +7,7 @@ Signature is a [Paperclip](https://github.com/thoughtbot/paperclip "Paperclip")-
 Add this line to your application's Gemfile:
 
 ```ruby
-    gem 'signature'
+gem 'signature'
 ```
 
 And then execute:
@@ -20,7 +20,60 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+### Models
+
+```ruby
+class Document < ActiveRecord::Base
+  attr_accessible :sig_doc
+  has_attached_signature_document :sig_doc
+end
+```
+
+### Migrations
+
+```ruby
+class AddSigDocToDocuments < ActiveRecord::Migration
+  def self.up
+    add_signature_document :documents, :sig_doc
+  end
+
+  def self.down
+    remove_signature_document :documents, :sig_doc
+  end
+end
+```
+
+### Edit and New Views
+
+```erb
+<%= form_for @document, :url => documents_path, :html => { :multipart => true } do |form| %>
+  <%= form.file_field :sig_doc %>
+<% end %>
+```
+
+### Controller
+
+```ruby
+def create
+  @user = User.create( params[:user] )
+end
+```
+
+### Show View
+
+```erb
+<%= signature_document_viewer @documents.sig_doc %>
+<%= document_viewer @documents.sig_doc %>
+```
+
+### Deleting an Attachment
+
+Set the attribute to `nil` and save.
+
+```ruby
+@user.document = nil
+@user.save
+```
 
 ##License
 
