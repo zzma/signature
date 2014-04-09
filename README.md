@@ -55,7 +55,7 @@ end
 
 ```ruby
 def create
-  @user = User.create( params[:user] )
+  @document = Document.create( params[:document] )
 end
 ```
 
@@ -71,8 +71,8 @@ end
 Set the attribute to `nil` and save.
 
 ```ruby
-@user.document = nil
-@user.save
+@document.sig_doc = nil
+@dcoument.save
 ```
 
 ##License
