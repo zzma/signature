@@ -1,0 +1,328 @@
+$highest-z: 9999
+$high-z: 199
+$toolbar-height: 32px
+
+//Colors
+$base-color: #474747
+$darker-base: #272727
+
+input, button, select
+  font: message-box
+  outline: none
+
+#outerViewerContainer
+  width: 100%
+  height: 100%
+  position: relative
+  font: message-box
+
+  background-color: $darker-base
+  background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
+  background-clip: padding-box
+
+#mainViewerContainer
+  position: absolute
+  top: 0
+  right: 0
+  bottom: 0
+  left: 0
+
+  .toolbar
+    position: relative
+    left: 0
+    right: 0
+    z-index: $highest-z
+    cursor: default
+
+#toolbarContainer
+  position: relative
+  height: $toolbar-height
+  background-color: $base-color
+  width: 100%
+
+#toolbarViewer
+  height: $toolbar-height
+
+  #toolbarViewerLeft
+    position: absolute
+    top: 0
+    left: 0
+
+    > *
+      position: relative
+      float: left
+  #toolbarViewerRight
+    position: absolute
+    top: 0
+    right: 0
+    > *
+      position: relative
+      float: left
+.splitToolbarButton
+  margin: 3px 2px 4px 0px
+  display: inline-block
+
+  > .toolbarButton
+    border-radius: 0
+    float: left
+
+    &:hover, &:focus
+      background-color: hsla(0,0%,0%,.2)
+      box-shadow: 0 1px 0 hsla(0,0%,100%,.05) inset, 0 0 1px hsla(0,0%,100%,.15) inset, 0 0 1px hsla(0,0%,0%,.05)
+      z-index: $high-z
+
+  > .toolbarButton:first-child
+    position: relative
+    margin: 0
+    margin-right: -1px
+    border-top-left-radius: 2px
+    border-bottom-left-radius: 2px
+    border-right-color: transparent
+  > .toolbarButton:last-child
+    position: relative
+    margin: 0
+    margin-left: -1px
+    border-top-right-radius: 2px
+    border-bottom-right-radius: 2px
+    border-left-color: transparent
+
+.splitToolbarButton:hover > .toolbarButton, .splitToolbarButton:focus > .toolbarButton
+  background-color: hsla(0,0%,0%,.12)
+  background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
+  background-clip: padding-box
+  border: 1px solid hsla(0,0%,0%,.35)
+  border-color: hsla(0,0%,0%,.32) hsla(0,0%,0%,.38) hsla(0,0%,0%,.42)
+  box-shadow: 0 1px 0 hsla(0,0%,100%,.05) inset, 0 0 1px hsla(0,0%,100%,.15) inset, 0 1px 0 hsla(0,0%,100%,.05)
+  -webkit-transition-property: background-color, border-color, box-shadow
+  -webkit-transition-duration: 150ms
+  -webkit-transition-timing-function: ease
+  transition-property: background-color, border-color, box-shadow
+  transition-duration: 150ms
+  transition-timing-function: ease
+
+.toolbarButton
+  border: 0 none
+  background-color: rgba(0, 0, 0, 0)
+  width: $toolbar-height
+  height: $toolbar-height - 7px
+  min-width: 16px
+  padding: 2px 6px 0
+  border: 1px solid transparent
+  border-radius: 2px
+  color: hsla(0,0%,100%,.8)
+  font-size: 12px
+  line-height: 14px
+  -webkit-user-select: none
+  -moz-user-select: none
+  -ms-user-select: none
+  /* Opera does not support user-select, use <... unselectable="on"> instead */
+  cursor: default
+  -webkit-transition-property: background-color, border-color, box-shadow
+  -webkit-transition-duration: 150ms
+  -webkit-transition-timing-function: ease
+  transition-property: background-color, border-color, box-shadow
+  transition-duration: 150ms
+  transition-timing-function: ease
+
+  &:hover, &:focus
+    background-color: hsla(0,0%,0%,.12)
+    background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
+    background-clip: padding-box
+    border: 1px solid hsla(0,0%,0%,.35)
+    border-color: hsla(0,0%,0%,.32) hsla(0,0%,0%,.38) hsla(0,0%,0%,.42)
+    box-shadow: 0 1px 0 hsla(0,0%,100%,.05) inset, 0 0 1px hsla(0,0%,100%,.15) inset,  0 1px 0 hsla(0,0%,100%,.05)
+
+
+  &:before
+    //All matching images have a size of 16x16
+    //All relevant containers have a size of 32x25
+    position: absolute
+    display: inline-block
+    top: 4px
+    left: 7px
+
+  > span
+    display: inline-block
+    width: 0
+    height: 0
+    overflow: hidden
+
+  &.pageUp::before
+    content: url(/assets/signature/toolbarButton-pageUp.png)
+  &.pageDown::before
+    content: url(/assets/signature/toolbarButton-pageDown.png)
+  &.zoomOut::before
+    content: url(/assets/signature/toolbarButton-zoomOut.png)
+  &.zoomIn::before
+    content: url(/assets/signature/toolbarButton-zoomIn.png)
+
+.toolbarButton[disabled]
+  opacity: .5
+
+.splitToolbarButtonSeparator
+  padding: 8px 0
+  width: 1px
+  background-color: hsla(0,0%,0%,.5)
+  z-index: 99
+  box-shadow: 0 0 0 1px hsla(0,0%,100%,.08)
+  display: inline-block
+  margin: 5px 0
+  float: left
+
+  &:hover, &.toggled
+    padding: 12px 0
+    margin: 1px 0
+    box-shadow: 0 0 0 1px hsla(0,0%,100%,.03)
+    -webkit-transition-property: padding
+    -webkit-transition-duration: 10ms
+    -webkit-transition-timing-function: ease
+    transition-property: padding
+    transition-duration: 10ms
+    transition-timing-function: ease
+
+.toolbarLabel
+  min-width: 16px
+  padding: 3px 6px 3px 2px
+  margin: 4px 2px 4px 0
+  border: 1px solid transparent
+  border-radius: 2px
+  color: hsl(0,0%,85%)
+  font-size: 12px
+  line-height: 14px
+  text-align: left
+  -webkit-user-select: none
+  -moz-user-select: none
+  cursor: default
+
+.toolbarField
+  padding: 3px 6px
+  margin: 4px 0 4px 0
+  border: 1px solid transparent
+  border-radius: 2px
+  background-color: hsla(0,0%,100%,.09)
+  background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
+  background-clip: padding-box
+  border: 1px solid hsla(0,0%,0%,.35)
+  border-color: hsla(0,0%,0%,.32) hsla(0,0%,0%,.38) hsla(0,0%,0%,.42)
+  box-shadow: 0 1px 0 hsla(0,0%,0%,.05) inset, 0 1px 0 hsla(0,0%,100%,.05)
+  color: hsl(0,0%,95%)
+  font-size: 12px
+  line-height: 14px
+  outline-style: none
+  transition-property: background-color, border-color, box-shadow
+  transition-duration: 150ms
+  transition-timing-function: ease
+
+  &.pageNumber
+    -moz-appearance: textfield /* hides the spinner in moz */
+    min-width: 16px
+    text-align: right
+    width: 40px
+
+    &::-webkit-inner-spin-button, &::-webkit-outer-spin-button
+      -webkit-appearance: none
+      margin: 0
+
+
+.dropdownToolbarButton
+  min-width: 16px
+  padding: 2px 6px 0
+  border: 1px solid transparent
+  border-radius: 2px
+  color: hsla(0,0%,100%,.8)
+  font-size: 12px
+  line-height: 14px
+  -webkit-user-select: none
+  -moz-user-select: none
+  -ms-user-select: none
+  /* Opera does not support user-select, use <... unselectable="on"> instead */
+  cursor: default
+  -webkit-transition-property: background-color, border-color, box-shadow
+  -webkit-transition-duration: 150ms
+  -webkit-transition-timing-function: ease
+  transition-property: background-color, border-color, box-shadow
+  transition-duration: 150ms
+  transition-timing-function: ease
+  margin: 3px 2px 4px 0
+  background-color: hsla(0,0%,0%,.12)
+  background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
+  background-clip: padding-box
+  border: 1px solid hsla(0,0%,0%,.35)
+  border-color: hsla(0,0%,0%,.32) hsla(0,0%,0%,.38) hsla(0,0%,0%,.42)
+  box-shadow: 0 1px 0 hsla(0,0%,100%,.05) inset, 0 0 1px hsla(0,0%,100%,.15) inset, 0 1px 0 hsla(0,0%,100%,.05)
+  width: 120px
+  max-width: 120px
+  padding: 3px 2px 2px
+  overflow: hidden
+  background: url(/assets/signature/toolbarButton-menuArrows.png) no-repeat
+  background-position: 95%
+  
+  &:hover:active
+    background-color: hsla(0,0%,0%,.2)
+    background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
+    border-color: hsla(0,0%,0%,.35) hsla(0,0%,0%,.4) hsla(0,0%,0%,.45)
+    box-shadow: 0 1px 1px hsla(0,0%,0%,.1) inset, 0 0 1px hsla(0,0%,0%,.2) inset, 0 1px 0 hsla(0,0%,100%,.05)
+    -webkit-transition-property: background-color, border-color, box-shadow
+    -webkit-transition-duration: 10ms
+    -webkit-transition-timing-function: linear
+    transition-property: background-color, border-color, box-shadow
+    transition-duration: 10ms
+    transition-timing-function: linear
+
+  > select
+    -webkit-appearance: none
+    -moz-appearance: none /* in the future this might matter, see bugzilla bug #649849 */
+    min-width: 140px
+    font-size: 12px
+    color: hsl(0,0%,95%)
+    margin: 0
+    padding: 0
+    border: none
+    background: rgba(0,0,0,0) /* Opera does not support 'transparent' <select> background */
+  > select > option
+    background: hsl(0,0%,24%)
+
+#viewerContainer
+  overflow: auto
+  position: absolute
+  top: 32px
+  right: 0
+  bottom: 0
+  left: 0
+  outline: none
+  box-shadow: inset 1px 0 0 hsla(0,0%,100%,.05)
+
+  &:-ms-fullscreen
+    top: 0px !important
+    border-top: 2px solid transparent
+    width: 100%
+    height: 100%
+    overflow: hidden !important
+    cursor: none
+    box-shadow: inset 1px 0 0 hsla(0,0%,100%,.05)
+
+  &:-ms-fullscreen::-ms-backdrop
+    background-color: #000
+
+  &:-webkit-full-screen, &:-moz-full-screen, &:fullscreen
+    top: 0px
+    border-top: 2px solid transparent
+    background-color: #000
+    width: 100%
+    height: 100%
+    overflow: hidden
+    cursor: none
+
+.page
+  width: 816px
+  height: 1056px
+  margin: 1px auto -8px auto
+  position: relative
+  overflow: visible
+  border: 9px solid transparent
+  background-clip: content-box
+  border-image: url(/assets/pdf/shadow.png) 9 9 repeat
+  background-color: white
+
+.imageWrapper
+  overflow: hidden

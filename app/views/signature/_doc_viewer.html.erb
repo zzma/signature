@@ -1,0 +1,59 @@
+<h3>Doc Viewer</h3>
+
+
+<div id="outerViewerContainer">
+  <div id="mainViewerContainer">
+    <div class="toolbar">
+      <div id="toolbarContainer">
+        <div id="toolbarViewer">
+          <div id="toolbarViewerLeft">
+            <div class="splitToolbarButton">
+              <button class="toolbarButton pageUp">
+                <span>Previous</span>
+              </button>
+              <div class="splitToolbarButtonSeparator"></div>
+              <button class="toolbarButton pageDown">
+                <span>Next</span>
+              </button>
+            </div>
+            <label class="toolbarLabel" for="pageNumber" id="pageNumberLabel">Page:</label>
+            <input class="toolbarField pageNumber" type="number" id="pageNumber"/>
+            <span class="toolbarLabel" id="numPages">of X</span>
+          </div>
+          <div id="toolbarViewerRight">
+            <div class="splitToolbarButton">
+              <button class="toolbarButton zoomOut" id="zoomOut" title="Zoom Out">
+                <span>Zoom Out</span>
+              </button>
+              <div class="splitToolbarButtonSeparator"></div>
+              <button class="toolbarButton zoomIn" id="zoomIn" title="Zoom In">
+                <span>Zoom In</span>
+              </button>
+            </div>
+            <span class="dropdownToolbarButton" id="scaleSelectContainer">
+              <select title="Zoom" id="scaleSelect">
+                <option value="0.5">50%</option>
+                <option value="0.75">75%</option>
+                <option value="1">100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+              </select>
+            </span>
+          </div>
+        </div>
+        <div id="loadingBar"></div>
+      </div>
+    </div>
+    <div id="viewerContainer">
+      <div id="viewer">
+        <% document[:images].each_with_index do |image, index| %>
+            <div id="<%= 'pageContainer' + index.to_s %>" class="page" style="width: 700px;">
+              <a name="<%= index %>"></a>
+              <img class="imageWrapper" style="width: 700px;" src="<%= image %>"/>
+            </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
