@@ -1,5 +1,4 @@
-require "signature/version"
+require "signature/engine"
 
 module Signature
-  # Your code goes here...
 end
