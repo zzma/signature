@@ -293,7 +293,7 @@ var PDFView = {
         window.dispatchEvent(event);
 
         this.setScale(DEFAULT_SCALE);
-       //Initialize the download manager
+
     },
     getVisiblePages: function pdfViewGetVisiblePages() {
         return this.getVisibleElements(this.container, this.pages, true);
@@ -350,17 +350,23 @@ var PageView = function pageView(element, id, scale, navigateTo) {
     this.scale = scale || 'auto';
 
     this.initialize = function pageViewInitialize(){
+        var self = this;
         var image = this.image = element.getElementsByTagName('img')[0];
         if (!image) {
             console.error('Error initializing PageView');
             return;
         }
 
-        this._originalWidth = image.offsetWidth;
-
-        if (scale != 1) {
-            this.update(scale);
+        if (image.offsetWidth  === 0) {
+            image.onload = function (){
+                self._originalWidth = image.offsetWidth;
+                PDFView.setScale(scale);
+            }
+        } else {
+            this._originalWidth = image.offsetWidth;
+            PDFView.setScale(scale);
         }
+
     };
     this.setPdfPage = function pageViewSetPdfPage(pdfPage) {
 
@@ -371,7 +377,7 @@ var PageView = function pageView(element, id, scale, navigateTo) {
     this.update = function pageViewUpdate(scale) {
         this.scale = scale || this.scale;
 
-        var newWidth, newHeight;
+        var newWidth;
 
         if (scale >= MIN_SCALE && scale <= MAX_SCALE) {
             newWidth = this._originalWidth * scale;
@@ -379,7 +385,6 @@ var PageView = function pageView(element, id, scale, navigateTo) {
             var viewerEl = document.getElementById('viewerContainer');
             newWidth = viewerEl.offsetWidth - SCROLLBAR_PADDING;
         }
-
         //change the size of the element and its child image
         this.image.setAttribute('style', 'width:' + newWidth + 'px');
     };
@@ -441,7 +446,6 @@ var DownloadManager = (function PDFDownloadClosure() {
             var dl = document.getElementById('downloadLink');
             this.downloadUrl = dl ? dl.value : this.downloadUrl;
             this.filename = this.extractFilename(this.downloadUrl);
-            console.log(this.filename);
         },
         download: function DownloadManager_downloadUrl() {
             if (!DocViewer.isValidUrl(this.downloadUrl, true)) {

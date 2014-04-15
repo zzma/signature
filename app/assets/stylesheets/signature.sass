@@ -163,8 +163,8 @@ input, button, select
     content: url(/assets/signature/toolbarButton-download.png)
 
   &.download
-    width: 80px
-    margin-top: 2px
+    width: 95px
+    margin-top: 3px
     margin-left: 4px
     text-align: right
     line-height: 22px
@@ -337,3 +337,24 @@ input, button, select
 
 .imageWrapper
   overflow: hidden
+
+
+@media(min-width: 768px)
+  .desktop-only-inline
+    display: inline-block
+  .desktop-only
+    display: block
+  .device-only
+    display: none
+
+@media(max-width: 767px)
+  .desktop-only-inline
+    display: none !important
+  .desktop-only
+    display: none !important
+  .device-only
+    display: block
+    
+  .toolbarButton.download
+    width: 32px
+    color: transparent

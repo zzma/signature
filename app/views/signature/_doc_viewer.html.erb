@@ -17,10 +17,10 @@
                 <span>Next</span>
               </button>
             </div>
-            <label class="toolbarLabel" for="pageNumber" id="pageNumberLabel">Page:</label>
+            <label class="toolbarLabel desktop-only-inline" for="pageNumber" id="pageNumberLabel">Page:</label>
             <input class="toolbarField pageNumber" type="number" id="pageNumber" title="Page number"/>
             <span class="toolbarLabel" id="numPages">of X</span>
-            <a href="#" id="download" class="toolbarButton download" title="Download document"> Download </a>
+            <button href="#" id="download" class="toolbarButton download" title="Download document"> Download </button>
           </div>
           <div id="toolbarViewerRight">
             <div class="splitToolbarButton">
@@ -32,7 +32,7 @@
                 <span>Zoom In</span>
               </button>
             </div>
-            <span class="dropdownToolbarButton" id="scaleSelectContainer">
+            <span class="dropdownToolbarButton desktop-only-inline" id="scaleSelectContainer">
               <select title="Zoom" id="scaleSelect">
                 <option value="auto" selected>Auto</option>
                 <option id="customScaleOption" value="custom"></option>
@@ -60,8 +60,9 @@
       </div>
     </div>
   </div>
-  <input type="hidden" id="downloadLink" value="<%= document[:download_url] %>"/>
+
 </div>
 
+<input type="hidden" id="downloadLink" value="<%= document[:download_url] %>"/>
 
 <%= javascript_include_tag "signature/doc_viewer.js" %>
