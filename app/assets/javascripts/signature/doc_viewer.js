@@ -9,14 +9,37 @@ if (typeof DocViewer === 'undefined') {
 }
 
 var DEFAULT_SCALE = 'auto';
-//var DEFAULT_SCALE = 0.3;
 var DEFAULT_SCALE_DELTA = 1.1;
 var MIN_SCALE = 0.1;
 var MAX_SCALE = 4.0;
 var MAX_AUTO_SCALE = 3.0;
-var UNKNOWN_SCALE = 0;
 var SCROLLBAR_PADDING = 40;
 var VERTICAL_PADDING = 5;
+
+// Validates if URL is safe and allowed, e.g. to avoid XSS.
+function isValidUrl(url, allowRelative) {
+    if (!url) {
+        return false;
+    }
+    // RFC 3986 (http://tools.ietf.org/html/rfc3986#section-3.1)
+    // scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+    var protocol = /^[a-z][a-z0-9+\-.]*(?=:)/i.exec(url);
+    if (!protocol) {
+        return allowRelative;
+    }
+    protocol = protocol[0].toLowerCase();
+    switch (protocol) {
+        case 'http':
+        case 'https':
+        case 'ftp':
+        case 'mailto':
+            return true;
+        default:
+            return false;
+    }
+}
+DocViewer.isValidUrl = isValidUrl;
+
 
 // optimised CSS custom property getter/setter
 var CustomStyle = (function CustomStyleClosure() {
@@ -123,6 +146,9 @@ var PDFView = {
         this.pageViewScroll = {};
 
         this.watchScroll(container, this.pageViewScroll, updateViewarea);
+
+        this.downloadManager = new DownloadManager();
+        this.downloadManager.initialize();
 
         this.initialized = true;
         container.addEventListener('scroll', function(){
@@ -236,7 +262,7 @@ var PDFView = {
         return this.currentPageNumber;
     },
     download: function pdfViewDownload(){
-
+        this.downloadManager.download();
     },
     navigateTo: function pdfViewNavigateTo(dest){
 
@@ -364,8 +390,81 @@ var PageView = function pageView(element, id, scale, navigateTo) {
             return;
         }
     };
-
 }
+
+
+var DownloadManager = (function PDFDownloadClosure() {
+
+    function download(url, filename) {
+        var a = document.createElement('a');
+        if (a.click) {
+            // Use a.click() if available. Otherwise, Chrome might show
+            // "Unsafe JavaScript attempt to initiate a navigation change
+            //  for frame with URL" and not open the PDF at all.
+            // Supported by (not mentioned = untested):
+            // - Firefox 6 - 19 (4- does not support a.click, 5 ignores a.click)
+            // - Chrome 19 - 26 (18- does not support a.click)
+            // - Opera 9 - 12.15
+            // - Internet Explorer 6 - 10
+            // - Safari 6 (5.1- does not support a.click)
+            a.href = url;
+            a.target = '_parent';
+            // Use a.download if available. This increases the likelihood that
+            // the file is downloaded instead of opened by another PDF plugin.
+            if ('download' in a) {
+                a.download = filename;
+            }
+            // <a> must be in the document for IE and recent Firefox versions.
+            // (otherwise .click() is ignored)
+            (document.body || document.documentElement).appendChild(a);
+            a.click();
+            a.parentNode.removeChild(a);
+        } else {
+            window.open(url, '_parent');
+
+            var hiddenIFrameID = 'hiddenDownloader',
+                iframe = document.getElementById(hiddenIFrameID);
+            if (iframe === null) {
+                iframe = document.createElement('iframe');
+                iframe.id = hiddenIFrameID;
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = url;
+        }
+    }
+
+    function DownloadManager() {}
+
+    DownloadManager.prototype = {
+        initialize: function DownloadManager_initialize() {
+            var dl = document.getElementById('downloadLink');
+            this.downloadUrl = dl ? dl.value : this.downloadUrl;
+            this.filename = this.extractFilename(this.downloadUrl);
+            console.log(this.filename);
+        },
+        download: function DownloadManager_downloadUrl() {
+            if (!DocViewer.isValidUrl(this.downloadUrl, true)) {
+                return; // restricted/invalid URL
+            }
+
+            download(this.downloadUrl, this.filename);
+        },
+        extractFilename: function DownloadManager_extractFilename(url) {
+            if (!url || url.indexOf('/') === -1) return url;
+
+            filename = url.split('/');
+            filename = filename[filename.length - 1];
+
+            if (!filename || filename.indexOf('.') === -1) return url;
+
+            return filename;
+        }
+    };
+
+    return DownloadManager;
+})();
+
 
 function webViewerLoad(evt) {
     PDFView.initialize();
@@ -411,6 +510,11 @@ function webViewerLoad(evt) {
     document.getElementById('scaleSelect').addEventListener('change',
         function() {
             PDFView.setScale(this.value);
+        });
+
+    document.getElementById('download').addEventListener('click',
+        function() {
+            PDFView.download();
         });
 
     PDFView.load();
