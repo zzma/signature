@@ -589,14 +589,20 @@ function selectScaleOption(value) {
         predefinedValueFound = true;
     }
 
-
     var customScaleOption = document.getElementById('customScaleOption');
     customScaleOption.selected = false;
 
     if (!predefinedValueFound) {
         customScaleOption.textContent = Math.round(parseFloat(value) * 10000) / 100 + '%';
+        customScaleOption.value = true;
         customScaleOption.selected = true;
     }
 
     return predefinedValueFound;
 }
+
+window.addEventListener('resize', function webViewerResize(evt){
+    if (PDFView.initialized) {
+        PDFView.setScale(document.getElementById('scaleSelect').value);
+    }
+});
