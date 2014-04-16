@@ -1,7 +1,3 @@
-
-<h3>Doc Viewer</h3>
-
-
 <div id="outerViewerContainer">
   <div id="mainViewerContainer">
     <div class="toolbar">
@@ -46,22 +42,35 @@
             </span>
           </div>
         </div>
-        <div id="loadingBar"></div>
+        <!--<div id="loadingBar"></div>-->
       </div>
     </div>
     <div id="viewerContainer">
-      <div id="viewer">
+      <%= content_tag "div", id: "viewer", data: { fields: document[:fields] } do %>
         <% document[:images].each_with_index do |image, index| %>
             <div id="<%= 'pageContainer' + index.to_s %>" class="page">
               <a name="<%= index %>"></a>
-              <img class="imageWrapper" src="<%= image %>"/>
+              <div id= "<%= 'imageWrapper' + index.to_s %>" class="imageWrapper">
+                <img src="<%= image %>"/>
+              </div>
             </div>
         <% end %>
+      <% end %>
+    </div>
+    <div class="footer">
+      <div id="footerContainer">
+        <div id="footerContainerLeft">
+            <button id="nextSignature" class="">Next Signature</button>
+        </div>
+        <div id="footerContainerRight">
+          <button id="finishSigning" class="inactive">Submit <span class="desktop-only-inline">Document</span></button>
+        </div>
       </div>
     </div>
   </div>
-
 </div>
+
+
 
 <input type="hidden" id="downloadLink" value="<%= document[:download_url] %>"/>
 

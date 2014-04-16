@@ -10,7 +10,7 @@ if (typeof DocViewer === 'undefined') {
 
 var DEFAULT_SCALE = 'auto';
 var DEFAULT_SCALE_DELTA = 1.1;
-var MIN_SCALE = 0.1;
+var MIN_SCALE = 0.01;
 var MAX_SCALE = 4.0;
 var MAX_AUTO_SCALE = 3.0;
 var SCROLLBAR_PADDING = 40;
@@ -274,7 +274,7 @@ var PDFView = {
         var self = this;
 
         var container = document.getElementById('viewer');
-        var pagesCount = container.children.length;
+        var pagesCount = container.getElementsByTagName('img').length;
 
         document.getElementById('numPages').textContent = 'of ' + pagesCount;
         document.getElementById('pageNumber').max = pagesCount;
@@ -352,12 +352,12 @@ var PageView = function pageView(element, id, scale, navigateTo) {
     this.initialize = function pageViewInitialize(){
         var self = this;
         var image = this.image = element.getElementsByTagName('img')[0];
-        if (!image) {
+        if (!image || image.length > 1) {
             console.error('Error initializing PageView');
             return;
         }
 
-        if (image.offsetWidth  === 0) {
+        if (!image.complete || image.naturalWidth === 0) {
             image.onload = function (){
                 self._originalWidth = image.offsetWidth;
                 PDFView.setScale(scale);
@@ -387,6 +387,7 @@ var PageView = function pageView(element, id, scale, navigateTo) {
         }
         //change the size of the element and its child image
         this.image.setAttribute('style', 'width:' + newWidth + 'px');
+        this.image.parentNode.setAttribute('style', 'width:' + newWidth + 'px');
     };
 
     this.scrollIntoView = function pageViewScrollIntoVIew(dest) {
@@ -469,9 +470,148 @@ var DownloadManager = (function PDFDownloadClosure() {
     return DownloadManager;
 })();
 
+var SignatureTool = (function(){
+    var SignatureToolView = {
+        nextButton: null,
+        finishButton: null,
+        initialize: function SignatureToolViewInitialize() {
+            this.nextButton = document.getElementById('nextSignature');
+            this.finishButton = document.getElementById('finishSigning');
+
+            this.nextButton.className = '';
+            this.finishButton.className = 'inactive';
+        }
+    }
+
+    var SignatureFields = {
+        fields: [],
+        initialize: function SignatureFieldsInitialize() {
+            var data = JSON.parse(document.getElementById('viewer').getAttribute('data-fields'));
+            for (var i = 0, len = data.length; i < len; i++) {
+                var container = document.getElementById('imageWrapper' + (data[i].page - 1));
+                console.log(container);
+                this.fields.push(new Field(container, data[i]));
+            }
+        },
+        /**
+         * Draws a signature field container at x,y relative to the parent container, where
+         * (0,0) is the top left corner of the container
+         *
+         * @param container - parent container element
+         * @param x - x coordinate of top-left corner of signature field
+         * @param y - y coordinate of top-left corner of signature field
+         * @param height - height of the signature field
+         * @param width - width of the signature field
+         * @returns {HTMLElement} - the element that was created
+         */
+        drawField: function SignatureFieldsDrawField(container, x, y, height, width) {
+            var f = document.createElement('div');
+            f.className = 'signatureField';
+            f.style.position = 'absolute';
+            f.style.top = y + 'px';
+            f.style.left = x + 'px';
+            f.style.bottom = (y + height) + 'px';
+            f.style.right = (x + width) + 'px';
+            container.appendChild(f);
+
+            return f;
+        },
+        renderFields: function(){
+
+        }
+    }
+
+    var Field = function Field(container, options) {
+        var f = {
+            currentX: options.x,
+            currentY: options.y,
+            currentHeight: options.height,
+            currentWidth: options.width,
+            originalX: options.x,
+            originalY: options.y,
+            originalHeight: options.height,
+            originalWidth: options.width,
+            element: null,
+            initialize: function FieldInitialize() {
+                var el = this.element = document.createElement('div');
+                el.className = 'signatureField';
+                el.style.position = 'absolute';
+                this.render();
+                container.appendChild(el);
+            },
+            get x() {
+                return this.currentX;
+            },
+            get y() {
+                return this.currentY;
+            },
+            get height() {
+                return this.currentHeight;
+            },
+            get width() {
+                return this.currentWidth
+            },
+            set x(val) {
+
+            },
+            set y(val) {
+
+            },
+            set height(val) {
+
+            },
+            set width(val) {
+
+            },
+            setScale: function FieldScale(scale) {
+                this.currentX = this.originalX * scale;
+                this.currentY = this.originalY * scale;
+                this.currentHeight = this.originalHeight * scale;
+                this.currentWidth = this.originalWidth * scale;
+            },
+            render: function FieldRender() {
+                var el = this.element;
+                el.style.top = this.currentY + 'px';
+                el.style.left = this.currentX + 'px';
+                el.style.bottom = (this.currentY + this.currentHeight) + 'px';
+                el.style.right = (this.currentX + this.currentWidth) + 'px';
+            }
+        };
+
+        f.initialize();
+
+        return f;
+    };
+
+
+    var SignatureTool = {
+        initialized: false,
+        initialize: function SignatureToolInitialize() {
+            SignatureToolView.initialize();
+            SignatureFields.initialize();
+
+            this.initialized = true;
+        },
+        /**
+         * Set the scale of the signature fields
+         *
+         * @param scale {float} - the absolute scale that
+         */
+        setScale: function SignatureToolSetScale(scale){
+
+        }
+    }
+
+    return SignatureTool;
+});
+
+var ST = new SignatureTool();
 
 function webViewerLoad(evt) {
     PDFView.initialize();
+
+// TODO: initialize the signature tool after images have all been loaded - use promises
+    ST.initialize();
 
     var mainContainer = document.getElementById('mainViewerContainer');
     var outerContainer = document.getElementById('outerViewerContainer');
