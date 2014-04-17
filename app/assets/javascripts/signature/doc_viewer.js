@@ -482,7 +482,13 @@ var SignatureTool = (function(){
             this.nextButton.className = '';
             this.finishButton.className = 'inactive';
 
-
+            this.signatureModal = document.getElementById('signatureModal')
+        },
+        displaySignatureModal: function SignatureToolViewDisplaySignatureModal() {
+            this.signatureModal.style.display = 'block';
+        },
+        hideSignatureModal: function SignatureToolViewHideSignatureModal() {
+            this.signatureModal.style.display = 'none';
         }
     }
 
@@ -595,6 +601,9 @@ var SignatureTool = (function(){
         initialize: function SignatureToolInitialize() {
             SignatureToolView.initialize();
             SignatureFields.initialize();
+
+            //TODO: hook up event listeners for the signature boxes to activate the signature modal
+
 
             this.initialized = true;
         },
