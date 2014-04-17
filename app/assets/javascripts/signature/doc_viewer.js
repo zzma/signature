@@ -10,7 +10,7 @@ if (typeof DocViewer === 'undefined') {
 
 var DEFAULT_SCALE = 'auto';
 var DEFAULT_SCALE_DELTA = 1.1;
-var MIN_SCALE = 0.01;
+var MIN_SCALE = 0.1;
 var MAX_SCALE = 4.0;
 var MAX_AUTO_SCALE = 3.0;
 var SCROLLBAR_PADDING = 40;
@@ -474,12 +474,15 @@ var SignatureTool = (function(){
     var SignatureToolView = {
         nextButton: null,
         finishButton: null,
+        signatureModal: null,
         initialize: function SignatureToolViewInitialize() {
             this.nextButton = document.getElementById('nextSignature');
             this.finishButton = document.getElementById('finishSigning');
 
             this.nextButton.className = '';
             this.finishButton.className = 'inactive';
+
+
         }
     }
 
@@ -489,37 +492,16 @@ var SignatureTool = (function(){
             var data = JSON.parse(document.getElementById('viewer').getAttribute('data-fields'));
             for (var i = 0, len = data.length; i < len; i++) {
                 var container = document.getElementById('imageWrapper' + (data[i].page - 1));
-                console.log(container);
                 this.fields.push(new Field(container, data[i]));
             }
         },
-        /**
-         * Draws a signature field container at x,y relative to the parent container, where
-         * (0,0) is the top left corner of the container
-         *
-         * @param container - parent container element
-         * @param x - x coordinate of top-left corner of signature field
-         * @param y - y coordinate of top-left corner of signature field
-         * @param height - height of the signature field
-         * @param width - width of the signature field
-         * @returns {HTMLElement} - the element that was created
-         */
-        drawField: function SignatureFieldsDrawField(container, x, y, height, width) {
-            var f = document.createElement('div');
-            f.className = 'signatureField';
-            f.style.position = 'absolute';
-            f.style.top = y + 'px';
-            f.style.left = x + 'px';
-            f.style.bottom = (y + height) + 'px';
-            f.style.right = (x + width) + 'px';
-            container.appendChild(f);
-
-            return f;
-        },
-        renderFields: function(){
-
+        setScale: function SignatureFieldsSetScale(scale) {
+            this.fields.forEach(function(field) {
+                field.setScale(scale);
+                field.render();
+            });
         }
-    }
+    };
 
     var Field = function Field(container, options) {
         var f = {
@@ -532,11 +514,14 @@ var SignatureTool = (function(){
             originalHeight: options.height,
             originalWidth: options.width,
             element: null,
+            parent: null,
             initialize: function FieldInitialize() {
+                this.parent = container;
+
                 var el = this.element = document.createElement('div');
                 el.className = 'signatureField';
                 el.style.position = 'absolute';
-                this.render();
+
                 container.appendChild(el);
             },
             get x() {
@@ -552,29 +537,50 @@ var SignatureTool = (function(){
                 return this.currentWidth
             },
             set x(val) {
-
+                this.currentX = val;
             },
             set y(val) {
-
+                this.currentY = val;
             },
             set height(val) {
-
+                this.currentHeight = val;
             },
             set width(val) {
-
+                this.currentWidth = val;
             },
             setScale: function FieldScale(scale) {
                 this.currentX = this.originalX * scale;
                 this.currentY = this.originalY * scale;
                 this.currentHeight = this.originalHeight * scale;
                 this.currentWidth = this.originalWidth * scale;
+//                this.toConsole();
             },
+            toConsole: function FieldToConsole(){
+                console.log({
+                    x: this.currentX,
+                    y: this.currentY,
+                    height: this.currentHeight,
+                    width: this.currentWidth
+                });
+            },
+            /**
+             * Draws a signature field container at x,y relative to the parent container, where
+             * (0,0) is the top left corner of the container
+             *
+             * @returns {HTMLElement} - the element that was created
+             */
+
             render: function FieldRender() {
                 var el = this.element;
+                var parentHeight = this.parent.offsetHeight,
+                    parentWidth = this.parent.offsetWidth;
+
                 el.style.top = this.currentY + 'px';
                 el.style.left = this.currentX + 'px';
-                el.style.bottom = (this.currentY + this.currentHeight) + 'px';
-                el.style.right = (this.currentX + this.currentWidth) + 'px';
+                el.style.bottom = (parentHeight - this.currentY - this.currentHeight) + 'px';
+                el.style.right = (parentWidth - this.currentX - this.currentWidth) + 'px';
+
+                return el;
             }
         };
 
@@ -597,8 +603,12 @@ var SignatureTool = (function(){
          *
          * @param scale {float} - the absolute scale that
          */
-        setScale: function SignatureToolSetScale(scale){
-
+        updateView: function SignatureToolSetScale(scale){
+            if (this.initialized) {
+                SignatureFields.setScale(scale);
+            } else {
+                console.warn('Not loaded');
+            }
         }
     }
 
@@ -612,6 +622,7 @@ function webViewerLoad(evt) {
 
 // TODO: initialize the signature tool after images have all been loaded - use promises
     ST.initialize();
+    setTimeout(function(){ST.updateView(PDFView.currentScale);}, 100);
 
     var mainContainer = document.getElementById('mainViewerContainer');
     var outerContainer = document.getElementById('outerViewerContainer');
@@ -629,11 +640,13 @@ function webViewerLoad(evt) {
     document.getElementById('zoomIn').addEventListener('click',
         function() {
             PDFView.zoomIn();
+            ST.updateView(PDFView.currentScale);
         });
 
     document.getElementById('zoomOut').addEventListener('click',
         function() {
             PDFView.zoomOut();
+            ST.updateView(PDFView.currentScale);
         });
 
     document.getElementById('pageNumber').addEventListener('click',
@@ -654,6 +667,7 @@ function webViewerLoad(evt) {
     document.getElementById('scaleSelect').addEventListener('change',
         function() {
             PDFView.setScale(this.value);
+            ST.updateView(PDFView.currentScale);
         });
 
     document.getElementById('download').addEventListener('click',
@@ -747,6 +761,9 @@ function selectScaleOption(value) {
 
 window.addEventListener('resize', function webViewerResize(evt){
     if (PDFView.initialized) {
-        PDFView.setScale(document.getElementById('scaleSelect').value);
+        if (document.getElementById('scaleSelect').value == 'auto') {
+            PDFView.setScale(document.getElementById('scaleSelect').value);
+            ST.updateView(PDFView.currentScale);
+        }
     }
 });

@@ -1,4 +1,5 @@
-$highest-z: 9999
+$highest-z: 99999
+$higher-z: 9999
 $high-z: 199
 $toolbar-height: 32px
 $footer-height: 60px
@@ -38,7 +39,7 @@ input, button, select
     position: relative
     left: 0
     right: 0
-    z-index: $highest-z
+    z-index: $higher-z
     box-shadow: 0px 0px 2px #000000
     cursor: default
 
@@ -346,6 +347,7 @@ input, button, select
   overflow: hidden
   border-image: url(/assets/signature/shadow.png) 9 9 repeat
   margin: 0 auto
+  position: relative
 
 .footer
   position: absolute
@@ -357,7 +359,7 @@ input, button, select
   position: relative
   width: 100%
   height: $footer-height
-  z-index: $highest-z
+  z-index: $higher-z
   line-height: $footer-height - 5px
 
   button
@@ -461,6 +463,31 @@ input, button, select
   background-color: red
 .signatureField::before
   content: "SIGNATURE"
+
+#signatureModal
+  position: absolute
+  top: 0
+  right: 0
+  bottom: 0
+  left: 0
+  z-index: $higher-z
+  background-color: rgba(0, 0, 0, 0.5)
+  //display: none
+
+.modalContainer
+  margin: auto
+  position: absolute
+  top: 0
+  left: 0
+  bottom: 0
+  right: 0
+  width: 90%
+  height: 90%
+  max-height: 400px
+  max-width: 400px
+  background-color: blue
+
+
 
 @media(min-width: 768px)
   .desktop-only-inline
