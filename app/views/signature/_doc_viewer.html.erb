@@ -69,13 +69,62 @@
     </div>
 
   </div>
-  <div id="signatureModal">
-    <div class="modalContainer"></div>
+  <div id="signatureModal" class="noSelect">
+    <div class="modalContainer">
+      <div class="modalTabbar">
+        <div id="typeSignatureForm">
+          <div class="typeField">
+            <label> Type Your Name Below </label>
+            <input type="text" id="typeSignature" placeholder="Your Name (e.g. John Hancock)" />
+          </div>
+        </div>
+        <ul class="modalTabs">
+          <li class="active" id="drawSignatureTab">Draw Your Signature</li>
+          <li class="" id="typeSignatureTab">Type Your Signature</li>
+        </ul>
+      </div>
+
+      <div class="modalContent">
+
+        <div id="signaturePad">
+
+        </div>
+      </div>
+
+      <div class="modalFooter">
+        <div class="modalFooterLeft">
+          <label>
+            <input type="checkbox" id="agreeSignature"/>
+            &nbsp;
+            I agree to the <a href="http://sports.yahoo.com" target="_blank" id="esignTerms">electronic signature terms & conditions.</a>
+          </label>
+        </div>
+        <div class="modalFooterRight">
+          <button id="signSignature" class="inactive">Apply <span class="desktop-only-inline">Signature</span></button>
+        </div>
+      </div>
+      <button id="cancelSignature">×</button>
+
+    </div>
   </div>
 </div>
 
-
-
 <input type="hidden" id="downloadLink" value="<%= document[:download_url] %>"/>
 
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <%= javascript_include_tag "signature/doc_viewer.js" %>
+<%= javascript_include_tag "signature/jSignature.min.js" %>
+
+<!--<%= javascript_include_tag "signature/json2.min.js" %>-->
+<!--<%= javascript_include_tag "signature/jquery.signaturepad.js" %>-->
+<script type="text/javascript">
+//    $(document).ready(function () {
+//        $('.sigPad').signaturePad();
+//    });
+
+    $(document).ready(function() {
+
+        $("#signaturePad").jSignature();
+
+    })
+</script>

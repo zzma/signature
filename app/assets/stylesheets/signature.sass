@@ -4,19 +4,31 @@ $high-z: 199
 $toolbar-height: 32px
 $footer-height: 60px
 
+
+//Signature modal
+$modal-tabbar-height: 140px
+$modal-footer-height: 80px
+
 //Colors
 $base-color: #474747
 $darker-base: #272727
-
-body, button
-  font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif !important
+$link-blue: #4169E1
 
 *
   margin: 0
+  font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif !important
 
 input, button, select
   font: message-box
   outline: none
+
+.noSelect
+  -webkit-touch-callout: none
+  -webkit-user-select: none
+  -khtml-user-select: none
+  -moz-user-select: none
+  -ms-user-select: none
+  user-select: none
 
 #outerViewerContainer
   width: 100%
@@ -362,41 +374,41 @@ input, button, select
   z-index: $higher-z
   line-height: $footer-height - 5px
 
-  button
-    display: inline-block
-    padding: 4px 12px
-    margin-bottom: 0
-    font-size: 16px
-    line-height: 24px
-    text-align: center
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75)
-    vertical-align: middle
-    cursor: pointer
-    color: #ffffff
-    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25)
-    border-width: 1px
-    -webkit-border-radius: 4px
-    -moz-border-radius: 4px
-    border-radius: 4px
-    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
-    -moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
-    font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif
+button
+  display: inline-block
+  padding: 4px 12px
+  margin-bottom: 0
+  font-size: 16px
+  line-height: 24px
+  text-align: center
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75)
+  vertical-align: middle
+  cursor: pointer
+  color: #ffffff
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25)
+  border-width: 1px
+  -webkit-border-radius: 4px
+  -moz-border-radius: 4px
+  border-radius: 4px
+  -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
+  -moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
+  font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif
 
-  button:hover
-    text-decoration: none
-    background-position: 0 -15px
-    -webkit-transition: background-position 0.1s linear
-    -moz-transition: background-position 0.1s linear
-    -o-transition: background-position 0.1s linear
-    transition: background-position 0.1s linear
+button:hover
+  text-decoration: none
+  background-position: 0 -15px
+  -webkit-transition: background-position 0.1s linear
+  -moz-transition: background-position 0.1s linear
+  -o-transition: background-position 0.1s linear
+  transition: background-position 0.1s linear
 
-  button:active
-    background-image: none
-    outline: 0
-    -webkit-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
-    -moz-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
+button:active
+  background-image: none
+  outline: 0
+  -webkit-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
+  -moz-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
 
 #footerContainerLeft
   float: left
@@ -421,18 +433,24 @@ input, button, select
 
   &:active
     background-color: #942a25
-  
+    background-image: -moz-linear-gradient(top, #bd362f, #942a25)
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#bd362f), to(#942a25))
+    background-image: -webkit-linear-gradient(top, #bd362f, #942a25)
+    background-image: -o-linear-gradient(top, #bd362f, #942a25)
+    background-image: linear-gradient(to bottom, #bd362f, #942a25)
+
   &.inactive
     background-image: none
     background-color: #945856
     color: #bbbbbb
     cursor: default
+    box-shadow: none
 
 #footerContainerRight
   float: right
   padding-right: 15px
 
-#finishSigning
+#signSignature, #finishSigning
   background-color: #5bb75b
   background-image: -moz-linear-gradient(top, #30c437, #13a31d)
   background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#30C437), to(#13A31D))
@@ -451,13 +469,18 @@ input, button, select
 
   &:active
     background-color: #13781b
+    background-image: -moz-linear-gradient(top, #13A31D, #13781b)
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#13A31D), to(#13781b))
+    background-image: -webkit-linear-gradient(top, #13A31D, #13781b)
+    background-image: -o-linear-gradient(top, #13A31D, #13781b)
+    background-image: linear-gradient(to bottom, #13A31D, #13781b)
 
   &.inactive
     background-color: #69a269
     background-image: none
     color: #bbbbbb
     cursor: default
-
+    box-shadow: none
 
 .signatureField
   background-color: red
@@ -484,10 +507,150 @@ input, button, select
   width: 90%
   height: 90%
   max-height: 400px
-  max-width: 400px
-  background-color: blue
+  max-width: 600px
+  background-color: #eeeeee
+  box-shadow: 0px 0px 16px #333333
 
+.modalTabbar
+  position: relative
+  height: $modal-tabbar-height
+  color: #444444
 
+ul.modalTabs
+  list-style: none
+  width: 100%
+  padding: 0
+  cursor: default
+  background-color: #ffffff
+
+  li
+    display: inline-block
+    font-size: 20px
+    text-align: center
+    padding-top: 15px
+    padding-bottom: 10px
+    width: 45%
+    max-width: 250px
+    border-bottom: 3px solid #ffffff
+
+    &:not(:first-child)
+      margin-left: 20px
+    &:hover
+      border-bottom: 3px solid #8d0014
+    &.active
+      border-bottom: 3px solid #8d0014
+      font-weight: 700
+
+.modalContent
+  position: absolute
+  top: $modal-tabbar-height
+  bottom: $modal-footer-height
+  left: 0
+  right: 0
+  text-align: left
+
+#typeSignatureForm
+  text-align: left
+  padding: 0 5%
+  width: 90%
+  background-color: #ffffff
+
+.typeField
+  padding-bottom: 5px
+
+  label
+    display: block
+    padding: 10px 0px
+  input
+    width: 100%
+    width: calc(100% - 14px)
+    width: -webkit-calc(100% - 22px)
+    display: block
+    height: 26px
+    padding: 4px 10px
+    font-size: 14px
+    line-height: 1.42857143
+    color: #555
+    background-color: #fff
+    background-image: none
+    border: 1px solid #ccc
+    border-radius: 4px
+    -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075)
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075)
+    -webkit-transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s
+    transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s
+    &:focus
+      box-shadow: 0 0 5px #3294c6
+      border-color: #3294c6
+.modalFooter
+  height: $modal-footer-height
+  line-height: $modal-footer-height - 2px
+  position: absolute
+  bottom: 0
+  right: 0
+  left: 0
+
+  background-color: #ffffff
+
+  button
+    padding: 12px 20px
+    font-size: 16px
+
+  .modalFooterLeft
+    float: left
+    padding-left: 20px
+    padding-top: 15px
+    max-width: 60%
+    width: 270px
+    font-size: 14px
+    height: $modal-footer-height
+    line-height: 18px
+
+  .modalFooterRight
+    float: right
+    padding-right: 20px
+
+  .agreeContainer
+    margin: auto
+    position: absolute
+    top: 0
+    left: 0
+    bottom: 0
+    right: 0
+    line-height: 18px
+
+#cancelSignature
+  cursor: pointer
+  position: absolute
+  color: #000000
+  top: 2px
+  right: 6px
+  background: 0 0
+  border: 0
+  box-shadow: none
+  -webkit-appearance: none
+
+  padding: 0
+
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important
+  font-size: 20px
+  font-weight: 900
+  line-height: 1
+  text-shadow: 0 1px 0 #fff
+  opacity: 0.2
+
+  &:hover
+    opacity: 0.6
+
+#esignTerms
+  color: $link-blue
+  text-decoration: none
+
+  &:visited
+    color: $link-blue
+
+  &:hover
+    text-decoration: underline
 
 @media(min-width: 768px)
   .desktop-only-inline
@@ -508,3 +671,16 @@ input, button, select
   .toolbarButton.download
     width: 32px
     color: transparent
+
+  ul.modalTabs
+    li
+      font-size: 12px
+      &:not(:first-child)
+        margin-left: 0px
+
+  .modalFooter
+    .modalFooterLeft
+      padding-left: 0px
+
+    .modalFooterRight
+      padding-right: 3px

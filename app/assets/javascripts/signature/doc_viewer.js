@@ -471,6 +471,60 @@ var DownloadManager = (function PDFDownloadClosure() {
 })();
 
 var SignatureTool = (function(){
+    var SignatureModal = {
+        signButton: null,
+        cancelButton: null,
+        drawTab: null,
+        typeTab: null,
+        element: null,
+        initialize: function SignatureModalInitialize() {
+            this.element = document.getElementById('signatureModal');
+            this.signButton = document.getElementById('signSignature');
+            this.cancelButton = document.getElementById('cancelSignature');
+            this.agreeCheckbox = document.getElementById('agreeSignature');
+
+            this.drawTab = document.getElementById('drawSignatureTab');
+            this.typeTab = document.getElementById('typeSignatureTab');
+
+            this.registerEvents();
+        },
+        show: function SignatureModalShow() {
+            this.element.style.display = 'block';
+        },
+        hide: function SignatureModalHide() {
+            this.element.style.display = 'none';
+        },
+        registerEvents: function SignatureModalRegisterEvents() {
+            var self = this;
+
+            this.agreeCheckbox.addEventListener('change', function(evt) {
+                console.log(this.checked);
+                if (this.checked) {
+                    self.signButton.className = '';
+                } else {
+                    self.signButton.className = 'inactive';
+                }
+            });
+
+            this.cancelButton.addEventListener('click', function(evt) {
+                self.hide();
+                self.clearModal();
+            });
+            this.drawTab.addEventListener('click', function(evt) {
+                self.typeTab.className = 'typeIt';
+                self.drawTab.className = 'active drawIt';
+            });
+            this.typeTab.addEventListener('click', function(evt) {
+                self.drawTab.className = 'drawIt';
+                self.typeTab.className = 'active typeIt';
+            });
+        },
+        clearModal: function SignatureModalClearModal() {
+
+        }
+
+    };
+
     var SignatureToolView = {
         nextButton: null,
         finishButton: null,
@@ -482,13 +536,13 @@ var SignatureTool = (function(){
             this.nextButton.className = '';
             this.finishButton.className = 'inactive';
 
-            this.signatureModal = document.getElementById('signatureModal')
+            SignatureModal.initialize();
         },
         displaySignatureModal: function SignatureToolViewDisplaySignatureModal() {
-            this.signatureModal.style.display = 'block';
+            SignatureModal.show();
         },
         hideSignatureModal: function SignatureToolViewHideSignatureModal() {
-            this.signatureModal.style.display = 'none';
+            SignatureModal.hide();
         }
     }
 
@@ -587,6 +641,9 @@ var SignatureTool = (function(){
                 el.style.right = (parentWidth - this.currentX - this.currentWidth) + 'px';
 
                 return el;
+            },
+            onClick: function FieldOnClick(listener) {
+                this.element.addEventListener('click', listener);
             }
         };
 
@@ -595,15 +652,19 @@ var SignatureTool = (function(){
         return f;
     };
 
-
     var SignatureTool = {
         initialized: false,
         initialize: function SignatureToolInitialize() {
             SignatureToolView.initialize();
             SignatureFields.initialize();
 
-            //TODO: hook up event listeners for the signature boxes to activate the signature modal
+            SignatureFields.fields.forEach(function(field){
+                field.onClick(function(){
+                    SignatureToolView.displaySignatureModal();
+                    //TODO: pass specific field information to the modal
 
+                });
+            });
 
             this.initialized = true;
         },
