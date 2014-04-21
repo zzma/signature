@@ -22,6 +22,9 @@ input, button, select
   font: message-box
   outline: none
 
+.hidden
+  display: none
+
 .noSelect
   -webkit-touch-callout: none
   -webkit-user-select: none
@@ -495,6 +498,7 @@ button:active
   left: 0
   z-index: $higher-z
   background-color: rgba(0, 0, 0, 0.5)
+  opacity: 0
   //display: none
 
 .modalContainer
@@ -506,7 +510,7 @@ button:active
   right: 0
   width: 90%
   height: 90%
-  max-height: 400px
+  max-height: 350px
   max-width: 600px
   background-color: #eeeeee
   box-shadow: 0px 0px 16px #333333
@@ -533,8 +537,8 @@ ul.modalTabs
     max-width: 250px
     border-bottom: 3px solid #ffffff
 
-    &:not(:first-child)
-      margin-left: 20px
+    //&:not(:first-child)
+    //  margin-left: 20px
     &:hover
       border-bottom: 3px solid #8d0014
     &.active
@@ -556,7 +560,7 @@ ul.modalTabs
   background-color: #ffffff
 
 .typeField
-  padding-bottom: 5px
+  padding: 15px 0px 5px 0px
 
   label
     display: block
@@ -652,6 +656,47 @@ ul.modalTabs
   &:hover
     text-decoration: underline
 
+#undoButton
+  position: absolute
+  display: none
+  margin: 0 !important
+  top: 5px
+  left: 0px
+  background-color: transparent
+  border: none
+  color: $link-blue
+  cursor: pointer
+  font-size: 16px
+  
+  &:hover
+    text-decoration: underline
+
+#signaturePad, #signatureTypeWrapper
+  height: 100%
+  width: 100%
+  //text-align: center
+
+#signatureType
+  position: absolute
+  top: 45%
+  bottom: 10%
+  left: 5%
+  padding-left: 3%
+  right: 8%
+  text-align: left
+  font-size: 36px
+  overflow-x: scroll
+  overflow-y: hidden
+
+#typeUnderline
+  position: absolute
+  top: 80%
+  left: 5%
+  right: 5%
+  border: 0
+  background-color: #3c3c3c
+  height: 2px
+  
 @media(min-width: 768px)
   .desktop-only-inline
     display: inline-block
@@ -684,3 +729,7 @@ ul.modalTabs
 
     .modalFooterRight
       padding-right: 3px
+
+  #signatureType
+    font-size: 24px
+    top: 60%

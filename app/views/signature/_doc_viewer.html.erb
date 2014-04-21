@@ -1,3 +1,5 @@
+<!--<link href='http://fonts.googleapis.com/css?family=Calligraffitti' rel='stylesheet' type='text/css'>-->
+
 <div id="outerViewerContainer">
   <div id="mainViewerContainer">
     <div class="toolbar">
@@ -67,7 +69,6 @@
         </div>
       </div>
     </div>
-
   </div>
   <div id="signatureModal" class="noSelect">
     <div class="modalContainer">
@@ -75,20 +76,22 @@
         <div id="typeSignatureForm">
           <div class="typeField">
             <label> Type Your Name Below </label>
-            <input type="text" id="typeSignature" placeholder="Your Name (e.g. John Hancock)" />
+            <input type="text" id="nameInput" placeholder="Your Name (e.g. John Hancock)" maxlength="30" />
           </div>
         </div>
         <ul class="modalTabs">
           <li class="active" id="drawSignatureTab">Draw Your Signature</li>
+          OR
           <li class="" id="typeSignatureTab">Type Your Signature</li>
         </ul>
       </div>
 
       <div class="modalContent">
-
-        <div id="signaturePad">
-
+        <div id="signaturePad"></div>
+        <div id="signatureTypeWrapper" class="hidden">
+            <div id="signatureType"></div>
         </div>
+        <hr id="typeUnderline">
       </div>
 
       <div class="modalFooter">
@@ -113,18 +116,8 @@
 
 <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <%= javascript_include_tag "signature/doc_viewer.js" %>
-<%= javascript_include_tag "signature/jSignature.min.js" %>
+<%= javascript_include_tag "signature/jSignature.js" %>
+<!--<%= javascript_include_tag "signature/jSignature.min.js" %>-->
 
 <!--<%= javascript_include_tag "signature/json2.min.js" %>-->
 <!--<%= javascript_include_tag "signature/jquery.signaturepad.js" %>-->
-<script type="text/javascript">
-//    $(document).ready(function () {
-//        $('.sigPad').signaturePad();
-//    });
-
-    $(document).ready(function() {
-
-        $("#signaturePad").jSignature();
-
-    })
-</script>

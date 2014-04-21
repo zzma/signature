@@ -474,9 +474,33 @@ var SignatureTool = (function(){
     var SignatureModal = {
         signButton: null,
         cancelButton: null,
+        agreeCheckbox: null,
         drawTab: null,
         typeTab: null,
+        drawPad: null,
+        $signaturePad: null,
+        typePad: null,
+        typeText: null,
+        nameInput: null,
         element: null,
+        undoButtonRenderer: function SignatureModalUndoButtonRenderer() {
+            // this === jSignatureInstance
+            var $undoButton = $('<input type="button" value="Undo last stroke" id="undoButton" />')
+                    .appendTo(this.$controlbarUpper)
+
+//            // this centers the button against the canvas.
+//            var buttonWidth = $undoButton.width()
+//            $undoButton.css(
+//                'left'
+//                , Math.round(( this.canvas.width - buttonWidth ) / 2)
+//            )
+//            // IE 7 grows the button. Correcting for that.
+//            if ( buttonWidth !== $undoButton.width() ) {
+//                $undoButton.width(buttonWidth)
+//            }
+
+            return $undoButton
+        },
         initialize: function SignatureModalInitialize() {
             this.element = document.getElementById('signatureModal');
             this.signButton = document.getElementById('signSignature');
@@ -485,6 +509,24 @@ var SignatureTool = (function(){
 
             this.drawTab = document.getElementById('drawSignatureTab');
             this.typeTab = document.getElementById('typeSignatureTab');
+
+            this.drawPad = document.getElementById('signaturePad');
+            this.typePad = document.getElementById('signatureTypeWrapper');
+            this.typeText = document.getElementById('signatureType');
+
+
+            this.setTypeFont('Calligraffitti', 'http://fonts.googleapis.com/css?family=Calligraffitti');
+//            this.typeText.setAttribute('style', "font-family: 'Calligraffitti', 'cursive' !important");
+
+
+            this.nameInput = document.getElementById('nameInput');
+
+            this.$signaturePad = $('#signaturePad').jSignature({
+                'UndoButton': this.undoButtonRenderer
+            });
+
+            this.element.style.display = 'none';
+            this.element.style.opacity = 1;
 
             this.registerEvents();
         },
@@ -511,18 +553,61 @@ var SignatureTool = (function(){
                 self.clearModal();
             });
             this.drawTab.addEventListener('click', function(evt) {
-                self.typeTab.className = 'typeIt';
-                self.drawTab.className = 'active drawIt';
+                self.typeTab.className = '';
+                self.drawTab.className = 'active';
+                self.drawPad.className = '';
+                self.typePad.className = 'hidden';
             });
             this.typeTab.addEventListener('click', function(evt) {
-                self.drawTab.className = 'drawIt';
-                self.typeTab.className = 'active typeIt';
+                self.drawTab.className = '';
+                self.typeTab.className = 'active';
+                self.drawPad.className = 'hidden';
+                self.typePad.className = '';
+            });
+            this.nameInput.addEventListener('keyup', function(evt){
+                self.typeText.innerHTML = this.value;
+            });
+            this.signButton.addEventListener('click', function(evt) {
+                //Check if the signature exists and user has agreed to terms
+                console.log('click');
+
+                if (self.drawTab.className.indexOf('active') != -1 &&
+                    self.$signaturePad.jSignature('getData', 'native').length === 0) {
+                    self.displayError('Please draw your signature');
+                    return;
+                }
+                if (self.typeTab.className.indexOf('active') != -1 && !self.nameInput.value) {
+                    self.displayError('Please type your signature');
+                    return;
+                }
+                if (!self.agreeCheckbox.checked) {
+                    self.displayError('Please agree to the Terms of Service');
+                    return;
+                }
             });
         },
         clearModal: function SignatureModalClearModal() {
 
-        }
+        },
+        setTypeFont: function SignatureModalSetTypeFont(fontName, fontUrl) {
+            var fontLink = document.createElement('link');
+            fontLink.setAttribute('href', fontUrl);
+            fontLink.setAttribute('rel', 'stylesheet');
+            fontLink.setAttribute('type', 'text/css');
 
+            var head = document.getElementsByTagName('head')[0];
+            head.appendChild(fontLink);
+
+            if (!this.typeText) {
+                console.warn('typeText not assigned yet');
+                return;
+            }
+
+            this.typeText.setAttribute('style', "font-family: '" + fontName + "', 'cursive' !important");
+        },
+        displayError: function SignatureModalDisplayError(text) {
+            alert('ERROR MSG: ' + text);
+        }
     };
 
     var SignatureToolView = {
@@ -547,19 +632,53 @@ var SignatureTool = (function(){
     }
 
     var SignatureFields = {
+        nextSignature: null,
         fields: [],
         initialize: function SignatureFieldsInitialize() {
             var data = JSON.parse(document.getElementById('viewer').getAttribute('data-fields'));
+
             for (var i = 0, len = data.length; i < len; i++) {
                 var container = document.getElementById('imageWrapper' + (data[i].page - 1));
                 this.fields.push(new Field(container, data[i]));
             }
+
+            //Sort the list of fields by order in which they occur in the document
+            this.fields.sort(function(a, b){
+                if (a.page > b.page) {
+                    return 1;
+                }
+                if (a.page < b.page) {
+                    return -1;
+                }
+                if (a.originalY > b.originalY) {
+                    return 1;
+                }
+                if (a.originalY < b.originalY) {
+                    return -1;
+                }
+                if (a.originalX > b.originalX) {
+                    return 1;
+                }
+                if (a.originalX < b.originalX) {
+                    return -1;
+                }
+
+                return 0;
+            });
+
+            this.nextSignature = 0;
         },
         setScale: function SignatureFieldsSetScale(scale) {
             this.fields.forEach(function(field) {
                 field.setScale(scale);
                 field.render();
             });
+        },
+        scrollToField: function SignatureFieldsScrollToField(index) {
+
+        },
+        scrollToNext: function SignatureFieldsScrollToNext() {
+            this.scrollToField(this.nextSignature);
         }
     };
 
@@ -573,6 +692,7 @@ var SignatureTool = (function(){
             originalY: options.y,
             originalHeight: options.height,
             originalWidth: options.width,
+            page: options.page,
             element: null,
             parent: null,
             initialize: function FieldInitialize() {
@@ -654,6 +774,8 @@ var SignatureTool = (function(){
 
     var SignatureTool = {
         initialized: false,
+        nextSignature: null,
+        previousSignature: null,
         initialize: function SignatureToolInitialize() {
             SignatureToolView.initialize();
             SignatureFields.initialize();
@@ -785,7 +907,6 @@ function updateViewarea() {
     PDFView.page = currentId;
     updateViewarea.inProgress = false;
 }
-
 
 window.addEventListener('scalechange', function scalechange(evt) {
     document.getElementById('zoomOut').disabled = (evt.scale == MIN_SCALE);
