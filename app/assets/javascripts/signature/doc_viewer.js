@@ -124,7 +124,10 @@ function scrollIntoView(element, spot) {
             parent.scrollLeft = offsetX;
         }
     }
-    parent.scrollTop = offsetY;
+
+//    parent.scrollTop = offsetY;
+    //TODO: gradual scroll - remove JQuery dependence
+    $(parent).animate({scrollTop: offsetY}, 500);
 }
 
 var PDFView = {
@@ -471,6 +474,12 @@ var DownloadManager = (function PDFDownloadClosure() {
 })();
 
 var SignatureTool = (function(){
+    var SVG_DATA = 'svg',
+        TEXT_DATA = 'text',
+        TYPE_FONT = 'Calligraffitti',
+        TYPE_FONT_URL = 'http://fonts.googleapis.com/css?family=Calligraffitti';
+
+
     var SignatureModal = {
         signButton: null,
         cancelButton: null,
@@ -483,9 +492,10 @@ var SignatureTool = (function(){
         typeText: null,
         nameInput: null,
         element: null,
+        onSignatureHandler: null,
         undoButtonRenderer: function SignatureModalUndoButtonRenderer() {
             // this === jSignatureInstance
-            var $undoButton = $('<input type="button" value="Undo last stroke" id="undoButton" />')
+            var $undoButton = $('<input type="button" value="Undo" id="undoButton" />')
                     .appendTo(this.$controlbarUpper)
 
 //            // this centers the button against the canvas.
@@ -502,6 +512,7 @@ var SignatureTool = (function(){
             return $undoButton
         },
         initialize: function SignatureModalInitialize() {
+
             this.element = document.getElementById('signatureModal');
             this.signButton = document.getElementById('signSignature');
             this.cancelButton = document.getElementById('cancelSignature');
@@ -514,10 +525,7 @@ var SignatureTool = (function(){
             this.typePad = document.getElementById('signatureTypeWrapper');
             this.typeText = document.getElementById('signatureType');
 
-
-            this.setTypeFont('Calligraffitti', 'http://fonts.googleapis.com/css?family=Calligraffitti');
-//            this.typeText.setAttribute('style', "font-family: 'Calligraffitti', 'cursive' !important");
-
+            this.setTypeFont(TYPE_FONT, TYPE_FONT_URL);
 
             this.nameInput = document.getElementById('nameInput');
 
@@ -540,7 +548,6 @@ var SignatureTool = (function(){
             var self = this;
 
             this.agreeCheckbox.addEventListener('change', function(evt) {
-                console.log(this.checked);
                 if (this.checked) {
                     self.signButton.className = '';
                 } else {
@@ -569,8 +576,6 @@ var SignatureTool = (function(){
             });
             this.signButton.addEventListener('click', function(evt) {
                 //Check if the signature exists and user has agreed to terms
-                console.log('click');
-
                 if (self.drawTab.className.indexOf('active') != -1 &&
                     self.$signaturePad.jSignature('getData', 'native').length === 0) {
                     self.displayError('Please draw your signature');
@@ -583,6 +588,16 @@ var SignatureTool = (function(){
                 if (!self.agreeCheckbox.checked) {
                     self.displayError('Please agree to the Terms of Service');
                     return;
+                }
+
+                if (self.onSignatureHandler && typeof(self.onSignatureHandler) === 'function') {
+                    var sig;
+                    if (self.typeTab.className.indexOf('active') != -1) {
+                        sig = new Signature(TEXT_DATA, self.nameInput.value);
+                    } else if (self.drawTab.className.indexOf('active') != -1) {
+                        sig = new Signature(SVG_DATA, self.$signaturePad.jSignature('getData', 'svg'));
+                    }
+                    self.onSignatureHandler(sig);
                 }
             });
         },
@@ -607,20 +622,40 @@ var SignatureTool = (function(){
         },
         displayError: function SignatureModalDisplayError(text) {
             alert('ERROR MSG: ' + text);
+        },
+        //register a handler for when a signature is added
+        onSignature: function SignatureModalOnSignature(handler) {
+            this.onSignatureHandler = handler;
         }
     };
+
+    var Signature = function Signature(type, data) {
+        var s = {
+            type: type,
+            data: data,
+            initialize: function SignatureInitialize() {
+                //TODO: some validation
+            }
+
+        };
+
+        s.initialize();
+
+        return s;
+    }
 
     var SignatureToolView = {
         nextButton: null,
         finishButton: null,
         signatureModal: null,
+        nextHandler: null,
         initialize: function SignatureToolViewInitialize() {
             this.nextButton = document.getElementById('nextSignature');
             this.finishButton = document.getElementById('finishSigning');
 
-            this.nextButton.className = '';
-            this.finishButton.className = 'inactive';
+            this.disableSubmit();
 
+            var self = this;
             SignatureModal.initialize();
         },
         displaySignatureModal: function SignatureToolViewDisplaySignatureModal() {
@@ -628,17 +663,65 @@ var SignatureTool = (function(){
         },
         hideSignatureModal: function SignatureToolViewHideSignatureModal() {
             SignatureModal.hide();
+        },
+        //register a handler for when a signature is added
+        onSignature: function SignatureToolViewOnSignature(handler) {
+            SignatureModal.onSignature(handler);
+        },
+        onNext: function SignatureToolViewOnNext(handler) {
+            this.nextHandler = handler;
+            this.nextButton.addEventListener('click', this.nextHandler);
+        },
+        onSubmit: function SignatureToolViewOnSubmit(handler) {
+            this.submitHandler = handler;
+        },
+        disableSubmit: function SignatureToolDisableSubmit() {
+            this.nextButton.className = '';
+            this.nextButton.addEventListener('click', this.nextHandler);
+            this.finishButton.className = 'inactive';
+            this.finishButton.removeEventListener('click', this.submitHandler);
+        },
+        enableSubmit: function SignatureToolEnableSubmit() {
+            this.nextButton.className = 'inactive';
+            this.nextButton.removeEventListener('click', this.nextHandler);
+            this.finishButton.className = '';
+            this.finishButton.addEventListener('click', this.submitHandler);
         }
     }
 
+
+
     var SignatureFields = {
         nextSignature: null,
+        selectedSignature: null,
         fields: [],
         initialize: function SignatureFieldsInitialize() {
             var data = JSON.parse(document.getElementById('viewer').getAttribute('data-fields'));
+            data.sort(function(a,b) {
+                if (a.page > b.page) {
+                    return 1;
+                }
+                if (a.page < b.page) {
+                    return -1;
+                }
+                if (a.y > b.y) {
+                    return 1;
+                }
+                if (a.y < b.y) {
+                    return -1;
+                }
+                if (a.x > b.x) {
+                    return 1;
+                }
+                if (a.x < b.x) {
+                    return -1;
+                }
 
+                return 0;
+            });
             for (var i = 0, len = data.length; i < len; i++) {
                 var container = document.getElementById('imageWrapper' + (data[i].page - 1));
+                data[i].index = i;
                 this.fields.push(new Field(container, data[i]));
             }
 
@@ -666,7 +749,7 @@ var SignatureTool = (function(){
                 return 0;
             });
 
-            this.nextSignature = 0;
+            this.assignNextSignature();
         },
         setScale: function SignatureFieldsSetScale(scale) {
             this.fields.forEach(function(field) {
@@ -675,11 +758,80 @@ var SignatureTool = (function(){
             });
         },
         scrollToField: function SignatureFieldsScrollToField(index) {
-
+            console.log('scrolling to ' + index);
+            if (index >= 0 && index < this.fields.length) {
+                scrollIntoView(this.fields[index].element);
+            }
         },
         scrollToNext: function SignatureFieldsScrollToNext() {
+            console.log(this.nextSignature);
             this.scrollToField(this.nextSignature);
+        },
+        setSelected: function SignatureFieldsSetSelected(selectedEl) {
+            if (!selectedEl || !selectedEl.id) {
+                console.warn('No element selected');
+                return;
+            }
+
+            var index = selectedEl.id.match(/\d+$/);
+
+            if (!index) {
+                console.warn('Selected element not found');
+                return;
+            }
+
+            this.selectedSignature = index[0];
+        },
+        applySignature: function SignatureFieldsApplySignature(sig) {
+            var parent = this.fields[this.selectedSignature].element;
+            //Clear out any existing signatures
+            while (parent.firstChild) {
+                parent.removeChild(parent.firstChild);
+            }
+
+            if (sig.type === SVG_DATA) {
+                var i = new Image();
+                i.src = 'data:' + sig.data[0] + ';base64,' + btoa(sig.data[1]);
+                i.style.width = '100%';
+                i.style.height = '100%';
+
+                parent.appendChild(i);
+            } else if (sig.type === TEXT_DATA) {
+                var d = document.createElement('div');
+                d.innerHTML = sig.data;
+                d.setAttribute('style', "font-family: '" + TYPE_FONT + "', 'cursive' !important");
+                d.style.fontSize = Math.min(parent.offsetHeight - 6, (parent.offsetWidth/sig.data.length)) + 'px';
+                d.style.lineHeight = parent.offsetHeight + 'px';
+
+                parent.appendChild(d);
+            }
+
+            if (this.nextSignature == this.selectedSignature) {
+                this.assignNextSignature();
+            }
+
+            this.selectedSignature = null;
+        },
+        assignNextSignature: function SignatureFieldAssignNextSignature() {
+            var nextIndex = -1;
+            for (var i = 0, len = this.fields.length; i < len; i++) {
+                if (!this.fields[i].element.innerHTML) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+
+            console.log('Setting next unsigned signature to: ' + nextIndex);
+            this.nextSignature = nextIndex;
+        },
+        allSigned: function SignatureFieldAllSigned() {
+            return (this.nextSignature == -1);
+        }, onFieldClick: function SignatureFieldsOnFieldClick(handler) {
+            this.fields.forEach(function(field) {
+                field.onClick(handler);
+            });
         }
+
     };
 
     var Field = function Field(container, options) {
@@ -699,7 +851,8 @@ var SignatureTool = (function(){
                 this.parent = container;
 
                 var el = this.element = document.createElement('div');
-                el.className = 'signatureField';
+                el.className = 'signatureField noSelect';
+                el.setAttribute('id', 'signatureField' + options.index)
                 el.style.position = 'absolute';
 
                 container.appendChild(el);
@@ -774,18 +927,29 @@ var SignatureTool = (function(){
 
     var SignatureTool = {
         initialized: false,
-        nextSignature: null,
-        previousSignature: null,
+        signature: null,
         initialize: function SignatureToolInitialize() {
+            var self = this;
             SignatureToolView.initialize();
             SignatureFields.initialize();
 
-            SignatureFields.fields.forEach(function(field){
-                field.onClick(function(){
+            SignatureFields.onFieldClick(function(){
+                SignatureFields.setSelected(this);
+                if (self.signature) {
+                    SignatureFields.applySignature(self.signature);
+                    if (SignatureFields.allSigned()) SignatureToolView.enableSubmit();
+                } else {
                     SignatureToolView.displaySignatureModal();
-                    //TODO: pass specific field information to the modal
+                }
+            });
 
-                });
+            SignatureToolView.onSignature(this.onSignatureHandler);
+
+            SignatureToolView.onNext(function(){
+                SignatureFields.scrollToNext();
+            });
+            SignatureToolView.onSubmit(function(){
+               alert("SUBMITTING!");
             });
 
             this.initialized = true;
@@ -801,6 +965,12 @@ var SignatureTool = (function(){
             } else {
                 console.warn('Not loaded');
             }
+        },
+        onSignatureHandler: function SignatureToolOnSignatureHandler(sig) {
+            SignatureTool.signature = sig;
+            SignatureFields.applySignature(sig);
+            SignatureToolView.hideSignatureModal();
+            if (SignatureFields.allSigned()) SignatureToolView.enableSubmit();
         }
     }
 
