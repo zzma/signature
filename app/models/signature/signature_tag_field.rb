@@ -1,5 +1,5 @@
 class SignatureTagField < ActiveRecord::Base
-  attr_accessible :height, :name, :signature_document, :signature_document_image, :tag_type, :width, :x, :y, :page
+  attr_accessible :height, :name, :value, :signature_document, :signature_document_image, :tag_type, :width, :x, :y, :page
 
   belongs_to :signature_document
   belongs_to :signature_document_image

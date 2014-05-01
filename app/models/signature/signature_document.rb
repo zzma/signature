@@ -10,25 +10,17 @@ class SignatureDocument < ActiveRecord::Base
   PDF2TXT = 'pdf2txt.py'
   IMAGEMAGICK = 'convert'
   GHOSTSCRIPT = 'gs'
-  RES_SCALE = 3
-  RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
-  WIDTH_BUFFER = 3 # additional width added to the tag fields
+
+  WIDTH_BUFFER = 2 # additional width added to the tag fields
+  HEIGHT_BUFFER = 2 # additional height added to the tag fields
 
   has_many :signature_document_images, dependent: :destroy
   has_many :signature_tag_fields, dependent: :destroy
 
-  # TODO: update sequence of events after SignatureDocument upload/creation
-  # 1) Detect Signature Fields (cache this?)
-  # 2) Use Prawn to cover them with white rectangles
-  # 3) Convert the PDF's to PNG's
-  # 4) Hook up tag fields to signature document images
+  after_commit :process_document, :on => :create
 
-  #after_create :process_tag_fields
-  #after_create :generate_document_images
-  #before_create :generate_document_images
-
-  # TODO: check if the required executables are present PDF2TXT, IMAGEMAGICK
-  #TODO: before_save that checks if the doc has been updated, and updates the document images accordingly
+  # TODO: check if the required executables are present PDF2TXT, IMAGEMAGICK, GHOSTSCRIPT
+  # TODO: before_save that checks if the doc has been updated, and updates the document images accordingly
 
   # create signature_tag_fields
   def process_tag_fields
@@ -48,10 +40,10 @@ class SignatureDocument < ActiveRecord::Base
       CSV.foreach(tmp_csv_file) do |row|
         attr = {
             page: row[0].to_i,
-            x: row[1].to_f * RES_SCALE,
-            y: row[2].to_f * RES_SCALE,
-            width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER) * RES_SCALE ,
-            height: (row[4].to_f - row[2].to_f) * RES_SCALE,
+            x: row[1].to_f,
+            y: row[2].to_f,
+            width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER),
+            height: (row[4].to_f - row[2].to_f),
             name: parse_tag_name(row[5]),
             tag_type: get_tag_type(row[5])
         }
@@ -73,7 +65,7 @@ class SignatureDocument < ActiveRecord::Base
   #  convert -density 200 -quality 80 file.pdf file.png
     image_file = self.doc.path.gsub(/\.pdf/, '.png')
 
-    line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + RES.to_s + ' -sOutputFile=:image_file :pdf_file')
+    line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + SignatureDocumentImage::RES.to_s + ' -sOutputFile=:image_file :pdf_file')
     line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
 
     page_count = PDF::Reader.new(self.doc.path).page_count
@@ -86,8 +78,9 @@ class SignatureDocument < ActiveRecord::Base
       end
     end
 
-    # Handle the multiple image files that are created for multiple-page documents
-    # create appropriate Signature Document Images
+    if self.signature_tag_fields.present?
+      connect_tags_to_images
+    end
   end
 
   # Create a deep copy of the signature_document, with the appropriate signature_document_images
@@ -101,9 +94,24 @@ class SignatureDocument < ActiveRecord::Base
 
   end
 
-  # Apply tags to the signature document
-  def apply_tags(tags)
+  # Apply existing tags to the signature document
+  # Accepts a hash of {tag_name1: value1, tag_name2: value2, ...}
+  def apply_tags(tags=nil)
+    if tags
+      tag_fields = self.signature_tag_fields
+      tags.each do |tag_name, value|
+        field = tag_fields.select{|tf| tf.name == tag_name.to_s}
+        if field.present? and field.length == 1
+          field.first.update_attributes(value: value)
+        end
+      end
+    end
 
+    populate_tags
+  end
+
+  def hide_text_tags
+    populate_tags(set_blank: TRUE)
   end
 
   private
@@ -144,6 +152,47 @@ class SignatureDocument < ActiveRecord::Base
       return
     end
 
+  end
+
+  # fill in the signature tag fields on the pdf with values
+  # accepts options[:set_blank], which leaves the field empty with a white background
+  def populate_tags(options = {})
+    output = self.doc.path.gsub(/\.pdf/, '-tagged.pdf')
+    input = self.doc.path
+    page_count = PDF::Reader.new(input).page_count
+
+    begin
+      Prawn::Document.generate(output, :skip_page_creation => true) do |pdf|
+        page_count.times do |num|
+          pdf.start_new_page(:template => input, :template_page => num+1)
+
+          tag_fields = self.signature_tag_fields.where(page: num+1)
+          if tag_fields.present?
+            tag_fields.each do |tag|
+              pdf.canvas do
+                  pdf.fill_color 'ffffff'
+                  pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height + HEIGHT_BUFFER)
+                unless options && options[:set_blank]
+                  pdf.fill_color '000000'
+                  pdf.text_box tag.value || tag.tag_type.upcase + ' FIELD', at: [tag.x, tag.y + tag.height], height: tag.height + HEIGHT_BUFFER, valign: :center
+                end
+              end
+            end
+          end
+        end
+      end
+      line = Cocaine::CommandLine.new('mv', ':tagged_file :original_file')
+      line.run(:tagged_file => output, :original_file => input)
+    rescue
+      puts '****SOME ERROR!******'
+    end
+
+  end
+
+  def process_document
+    process_tag_fields
+    hide_text_tags
+    generate_document_images
   end
 
 end
