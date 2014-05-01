@@ -48,12 +48,12 @@
       </div>
     </div>
     <div id="viewerContainer">
-      <%= content_tag "div", id: "viewer", data: { fields: document[:fields] } do %>
-          <% document[:images].each_with_index do |image, index| %>
+      <%= content_tag "div", id: "viewer", data: { fields: document.signature_tag_fields.map(&:attributes) } do %>
+          <% document.signature_document_images.each_with_index do |doc_image, index| %>
               <div id="<%= 'pageContainer' + index.to_s %>" class="page">
                 <a name="<%= index %>"></a>
                 <div id= "<%= 'imageWrapper' + index.to_s %>" class="imageWrapper">
-                  <img src="<%= image %>"/>
+                  <img src="<%= doc_image.image.url %>"/>
                 </div>
               </div>
           <% end %>
@@ -112,7 +112,7 @@
   </div>
 </div>
 
-<input type="hidden" id="downloadLink" value="<%= document[:download_url] %>"/>
+<input type="hidden" id="downloadLink" value="<%= document.doc.url(:original, timestamp: false)%>"/>
 
 <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <%= javascript_include_tag "signature/doc_viewer.js" %>

@@ -705,10 +705,10 @@ var SignatureTool = (function(){
                     return -1;
                 }
                 if (a.y > b.y) {
-                    return 1;
+                    return -1;
                 }
                 if (a.y < b.y) {
-                    return -1;
+                    return 1;
                 }
                 if (a.x > b.x) {
                     return 1;
@@ -719,10 +719,14 @@ var SignatureTool = (function(){
 
                 return 0;
             });
+
+            var count = 0;
             for (var i = 0, len = data.length; i < len; i++) {
-                var container = document.getElementById('imageWrapper' + (data[i].page - 1));
-                data[i].index = i;
-                this.fields.push(new Field(container, data[i]));
+                if (data[i].tag_type == 'signature') {
+                    var container = document.getElementById('imageWrapper' + (data[i].page - 1));
+                    data[i].index = count++;
+                    this.fields.push(new Field(container, data[i]));
+                }
             }
 
             //Sort the list of fields by order in which they occur in the document
@@ -734,10 +738,10 @@ var SignatureTool = (function(){
                     return -1;
                 }
                 if (a.originalY > b.originalY) {
-                    return 1;
+                    return -1;
                 }
                 if (a.originalY < b.originalY) {
-                    return -1;
+                    return 1;
                 }
                 if (a.originalX > b.originalX) {
                     return 1;
@@ -898,7 +902,7 @@ var SignatureTool = (function(){
             },
             /**
              * Draws a signature field container at x,y relative to the parent container, where
-             * (0,0) is the top left corner of the container
+             * (0,0) is the bottom left corner of the container
              *
              * @returns {HTMLElement} - the element that was created
              */
@@ -908,9 +912,9 @@ var SignatureTool = (function(){
                 var parentHeight = this.parent.offsetHeight,
                     parentWidth = this.parent.offsetWidth;
 
-                el.style.top = this.currentY + 'px';
+                el.style.bottom = this.currentY + 'px';
                 el.style.left = this.currentX + 'px';
-                el.style.bottom = (parentHeight - this.currentY - this.currentHeight) + 'px';
+                el.style.top = (parentHeight - this.currentY - this.currentHeight) + 'px';
                 el.style.right = (parentWidth - this.currentX - this.currentWidth) + 'px';
 
                 return el;

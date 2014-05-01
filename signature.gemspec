@@ -21,8 +21,13 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "sass"
   spec.add_dependency "rails", "~> 3.2.17"
-  spec.add_development_dependency "sqlite3"
+  spec.add_dependency "prawn"
+  spec.add_dependency "prawn-templates"
+  spec.add_dependency "pdf-reader"
+  spec.add_dependency "paperclip", "~> 4.1"
+  spec.add_dependency "cocaine", "~> 0.5.3"
 
+  spec.add_development_dependency "sqlite3"
   spec.add_development_dependency "bundler", "~> 1.3"
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rspec"
