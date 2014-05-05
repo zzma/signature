@@ -474,9 +474,9 @@ var DownloadManager = (function PDFDownloadClosure() {
 })();
 
 var SignatureTool = (function(){
-    var SVG_DATA = 'svg',
-        TEXT_DATA = 'text',
-        TYPE_FONT = 'Calligraffitti',
+    var DRAWN_SIG = 'sig',
+        TYPED_SIG = 'text',
+        TYPE_FONT = 'Pilgiche',
         TYPE_FONT_URL = 'http://fonts.googleapis.com/css?family=Calligraffitti';
 
 
@@ -525,7 +525,9 @@ var SignatureTool = (function(){
             this.typePad = document.getElementById('signatureTypeWrapper');
             this.typeText = document.getElementById('signatureType');
 
-            this.setTypeFont(TYPE_FONT, TYPE_FONT_URL);
+//   font is already being set with @font-face in the css
+//   this.setTypeFont(TYPE_FONT, TYPE_FONT_URL);
+            this.typeText.setAttribute('style', "font-family: '" + TYPE_FONT + "', 'cursive' !important");
 
             this.nameInput = document.getElementById('nameInput');
 
@@ -593,9 +595,9 @@ var SignatureTool = (function(){
                 if (self.onSignatureHandler && typeof(self.onSignatureHandler) === 'function') {
                     var sig;
                     if (self.typeTab.className.indexOf('active') != -1) {
-                        sig = new Signature(TEXT_DATA, self.nameInput.value);
+                        sig = new Signature(TYPED_SIG, self.nameInput.value);
                     } else if (self.drawTab.className.indexOf('active') != -1) {
-                        sig = new Signature(SVG_DATA, self.$signaturePad.jSignature('getData', 'svg'));
+                        sig = new Signature(DRAWN_SIG, self.$signaturePad.jSignature('getData', 'svg'));
                     }
                     self.onSignatureHandler(sig);
                 }
@@ -793,14 +795,15 @@ var SignatureTool = (function(){
                 parent.removeChild(parent.firstChild);
             }
 
-            if (sig.type === SVG_DATA) {
+            if (sig.type === DRAWN_SIG) {
                 var i = new Image();
                 i.src = 'data:' + sig.data[0] + ';base64,' + btoa(sig.data[1]);
+
                 i.style.width = '100%';
                 i.style.height = '100%';
 
                 parent.appendChild(i);
-            } else if (sig.type === TEXT_DATA) {
+            } else if (sig.type === TYPED_SIG) {
                 var d = document.createElement('div');
                 d.innerHTML = sig.data;
                 d.setAttribute('style', "font-family: '" + TYPE_FONT + "', 'cursive' !important");
@@ -935,7 +938,9 @@ var SignatureTool = (function(){
         initialize: function SignatureToolInitialize() {
             var self = this;
             SignatureToolView.initialize();
-            SignatureFields.initialize();
+            if (!viewOnly()){
+                SignatureFields.initialize();
+            }
 
             SignatureFields.onFieldClick(function(){
                 SignatureFields.setSelected(this);
@@ -953,7 +958,22 @@ var SignatureTool = (function(){
                 SignatureFields.scrollToNext();
             });
             SignatureToolView.onSubmit(function(){
-               alert("SUBMITTING!");
+                var sig = self.signature,
+                    sigType = document.getElementById('sig_type'),
+                    sigData = document.getElementById('sig_data'),
+                    sigForm = document.getElementById('sig_form');
+
+
+                //Send data to the server
+                if (sig.type === DRAWN_SIG) {
+                    sigType.value =  DRAWN_SIG;
+                    sigData.value = $('#signaturePad').jSignature('getData', 'default');
+                } else if (sig.type === TYPED_SIG) {
+                    sigType.value = TYPED_SIG;
+                    sigData.value = sig.data;
+                }
+
+                sigForm.submit();
             });
 
             this.initialized = true;
@@ -986,7 +1006,7 @@ var ST = new SignatureTool();
 function webViewerLoad(evt) {
     PDFView.initialize();
 
-// TODO: initialize the signature tool after images have all been loaded - use promises
+    // TODO: initialize the signature tool after images have all been loaded - use promises
     ST.initialize();
     setTimeout(function(){ST.updateView(PDFView.currentScale);}, 100);
 
@@ -1132,3 +1152,7 @@ window.addEventListener('resize', function webViewerResize(evt){
         }
     }
 });
+
+function viewOnly() {
+    return document.getElementById('outerViewerContainer').getAttribute('data-signature') != 'true'
+}

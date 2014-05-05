@@ -1,6 +1,4 @@
-<!--<link href='http://fonts.googleapis.com/css?family=Calligraffitti' rel='stylesheet' type='text/css'>-->
-
-<div id="outerViewerContainer">
+<div id="outerViewerContainer" data-signature="<%= !view_only %>">
   <div id="mainViewerContainer">
     <div class="toolbar">
       <div id="toolbarContainer">
@@ -48,7 +46,9 @@
       </div>
     </div>
     <div id="viewerContainer">
-      <%= content_tag "div", id: "viewer", data: { fields: document.signature_tag_fields.map(&:attributes) } do %>
+      <% document.signature_tag_fields  %>
+
+      <%= content_tag "div", id: "viewer", data: { fields: document.signature_tag_fields.map(&:scaled_attributes)} do %>
           <% document.signature_document_images.each_with_index do |doc_image, index| %>
               <div id="<%= 'pageContainer' + index.to_s %>" class="page">
                 <a name="<%= index %>"></a>
@@ -59,7 +59,7 @@
           <% end %>
       <% end %>
     </div>
-    <div class="footer">
+    <div class="footer <%= view_only ? 'hidden' : ''%>">
       <div id="footerContainer">
         <div id="footerContainerLeft">
           <button id="nextSignature" class="">Next Signature</button>
@@ -113,11 +113,10 @@
 </div>
 
 <input type="hidden" id="downloadLink" value="<%= document.doc.url(:original, timestamp: false)%>"/>
-
+<%= form_tag('/sign/' + document.id.to_s, method: :post, id: 'sig_form') do %>
+    <input type="hidden" name="sig_type" id="sig_type"/>
+    <input type="hidden" name="sig_data" id="sig_data"/>
+<% end %>
 <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <%= javascript_include_tag "signature/doc_viewer.js" %>
 <%= javascript_include_tag "signature/jSignature.js" %>
-<!--<%= javascript_include_tag "signature/jSignature.min.js" %>-->
-
-<!--<%= javascript_include_tag "signature/json2.min.js" %>-->
-<!--<%= javascript_include_tag "signature/jquery.signaturepad.js" %>-->

@@ -10,6 +10,10 @@ module Signature
       def copy_models
         directory '../../../../app/models', 'app/models'
       end
+
+      def copy_fonts
+        directory '../../../../app/assets/fonts', 'app/assets/fonts'
+      end
     end
   end
 end
