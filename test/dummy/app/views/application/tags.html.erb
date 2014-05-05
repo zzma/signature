@@ -1,0 +1,9 @@
+<%= form_for @document, as: :post, url: '/tags/' + @document.id.to_s do |doc|%>
+    <% @document.signature_tag_fields.each do |tag_field| %>
+        <%= tag_field.name %>
+        <input type="text" id=<%="post_signature_tag_fields_#{tag_field.name}"%> name=<%= "post[signature_tag_fields][#{tag_field.name}]" %>/>
+        <br/>
+    <% end %>
+
+    <%= doc.submit %>
+<% end %>

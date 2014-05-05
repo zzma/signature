@@ -12,10 +12,8 @@ lib/bundler/man
 pkg
 rdoc
 spec/reports
-tmp
 .idea/
 *.xml
 .sass-cache/
 log/*.log
 pkg/
-test/

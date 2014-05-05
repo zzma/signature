@@ -1,0 +1,7 @@
+<%= form_for @document, as: :post, url: '/upload' do |f|%>
+    <%= f.label :doc, 'Upload Document' %>
+    <br/>
+    <%= f.file_field :doc %>
+    <br/>
+    <%= f.submit %>
+<% end %>

@@ -1,0 +1,8 @@
+<h2>Successfully signed!</h2>
+
+<div>Signed from: <%= @document.signed_ip %></div>
+<div>Signed at: <%= @document.signed_at %></div>
+<br/>
+<div style="height: 500px; width: 800px;">
+  <%= render "signature/doc_viewer", document: @document, view_only: true %>
+</div>
