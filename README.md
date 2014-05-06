@@ -18,6 +18,8 @@ Or install it yourself as:
 
     $ gem install signature
 
+Also need to install pdfminer and ghostscript
+
 ## Usage
 
 ### Models

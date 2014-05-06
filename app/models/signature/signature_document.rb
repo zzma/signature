@@ -153,12 +153,6 @@ class SignatureDocument < ActiveRecord::Base
                   # Overlay the drawn signature on top of the signature field
                   pdf.image(sig_file, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height])
                 elsif sig_type == TYPED_SIG
-
-                  # Upload custom font
-                  #pdf.font_families.update('Calligraffitti' => {
-                  #    :normal => "#{Rails.root}/app/assets/fonts/signature/Calligraffitti-Regular.ttf"
-                  #})
-
                   # Place the typed Signature on top of the signature field
                   pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
                   #pdf.font("/Library/Fonts/pilgiche.ttf") do
@@ -188,9 +182,9 @@ class SignatureDocument < ActiveRecord::Base
     tag_name = str.gsub(/^.*\{\{!(?<tag>.*)\}\}.*$/,'\k<tag>')
     if tag_name == str
       Rails.logger.warn('Improper tag name: ' + str)
-      tag_name
+      tag_name.strip
     else
-      tag_name
+      tag_name.strip
     end
   end
 
