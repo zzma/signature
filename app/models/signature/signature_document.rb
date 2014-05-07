@@ -26,68 +26,12 @@ class SignatureDocument < ActiveRecord::Base
   # TODO: check if the required executables are present PDF2TXT, IMAGEMAGICK, GHOSTSCRIPT
   # TODO: before_save that checks if the doc has been updated, and updates the document images accordingly
 
-  # create signature_tag_fields
-  def process_tag_fields
-    if self.signature_tag_fields.blank?
-      tmp_csv_file = Rails.root.to_s + '/tmp/' + self.doc_file_name.gsub(/\.pdf/, '.csv')
-      removeCsv = Cocaine::CommandLine.new('rm', tmp_csv_file)
-
-      line = Cocaine::CommandLine.new(PDF2TXT, '-t tag -o :csv_output_file :pdf_input_file')
-      begin
-        line.run(:csv_output_file => tmp_csv_file,
-                 :pdf_input_file => self.doc.path)
-      rescue Cocaine::ExitStatusError => e
-        removeCsv.run
-        e
-      end
-
-      CSV.foreach(tmp_csv_file) do |row|
-        attr = {
-            page: row[0].to_i,
-            x: row[1].to_f,
-            y: row[2].to_f,
-            width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER),
-            height: (row[4].to_f - row[2].to_f),
-            name: parse_tag_name(row[5]),
-            tag_type: get_tag_type(row[5])
-        }
-
-        self.signature_tag_fields.create(attr)
-      end
-
-      if self.signature_document_images.present?
-        connect_tags_to_images
-      end
-
-      removeCsv.run
-
-    end
+  def signed?
+    return (self.signed_at.present? and self.signed_ip.present?)
   end
 
-  # Convert the PDF document into a series of signature_document_images
-  def generate_document_images
-    #remove the current document images
-    self.signature_document_images.map(&:destroy)
-
-    #  convert -density 200 -quality 80 file.pdf file.png
-    image_file = self.doc.path.gsub(/\.pdf/, '.png')
-
-    line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + SignatureDocumentImage::RES.to_s + ' -sOutputFile=:image_file :pdf_file')
-    line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
-
-    page_count = PDF::Reader.new(self.doc.path).page_count
-
-    if page_count and page_count > 0
-      filename = image_file.gsub(/\.png/, '')
-      extension = '.png'
-      for index in (1...page_count+1)
-        self.signature_document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
-      end
-    end
-
-    if self.signature_tag_fields.present?
-      connect_tags_to_images
-    end
+  def unique_tag_fields
+    return self.signature_tag_fields.uniq! {|tf| tf.name }
   end
 
   # Create a deep copy of the signature_document, with the appropriate signature_document_images
@@ -102,14 +46,16 @@ class SignatureDocument < ActiveRecord::Base
   end
 
   # Apply existing tags to the signature document
-  # Accepts a hash of {tag_name1: value1, tag_name2: value2, ...}
+  # Accepts a hash of new tags {tag_name1: value1, tag_name2: value2, ...}
   def apply_tags(tags=nil)
     if tags
       tag_fields = self.signature_tag_fields
       tags.each do |tag_name, value|
-        field = tag_fields.select{|tf| tf.name == tag_name.to_s}
-        if field.present? and field.length == 1
-          field.first.update_attributes(value: value)
+        fields = tag_fields.select{|tf| tf.name == tag_name.to_s}
+        if fields.present?
+          fields.each do |field|
+            field.update_attributes(value: value)
+          end
         end
       end
     end
@@ -119,60 +65,29 @@ class SignatureDocument < ActiveRecord::Base
   end
 
   def hide_text_tags
-    populate_tags(set_blank: TRUE)
+    populate_tags(set_blank: true)
   end
 
-  def add_signature(sig_type, data, ip_address)
+  def add_signature(sig_type, data, ip_address, options = {})
     sig_file = self.doc.path.gsub(/\.pdf/, '-drawn-signature.png')
     if sig_type == DRAWN_SIG
       File.open(sig_file, 'wb') do |f|
         f.write(Base64.decode64(data.split(',')[1]))
       end
+      draw_signature(sig_type, sig_file)
+    else
+      draw_signature(sig_type, data)
     end
 
-
-    output = self.doc.path.gsub(/\.pdf/, '-signed.pdf')
-    input = self.doc.path
-    page_count = PDF::Reader.new(input).page_count
-
-    begin
-      Prawn::Document.generate(output, :skip_page_creation => true) do |pdf|
-        page_count.times do |num|
-          pdf.start_new_page(:template => input, :template_page => num+1)
-
-          tag_fields = self.signature_tag_fields.where(page: num+1).signature
-          if tag_fields.present?
-            tag_fields.each do |tag|
-              pdf.canvas do
-                #White rectangle to 'erase' previous signature
-                pdf.fill_color 'ffffff'
-                pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height + HEIGHT_BUFFER)
-                pdf.fill_color '000000'
-
-                if sig_type == DRAWN_SIG
-                  # Overlay the drawn signature on top of the signature field
-                  pdf.image(sig_file, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height])
-                elsif sig_type == TYPED_SIG
-                  # Place the typed Signature on top of the signature field
-                  pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
-                  #pdf.font("/Library/Fonts/pilgiche.ttf") do
-                    pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height + HEIGHT_BUFFER, size: tag.height, valign: :center
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-    rescue
-      puts '****SOME ERROR IN add_signature!******'
+    if options and options[:append_summary]
+      append_summary_page(overwrite: self.signed?)
+      generate_document_images
     end
-
-    replace_file(output, input)
 
     record_signature(ip_address)
     generate_document_images
   end
+
 
   private
 
@@ -211,7 +126,71 @@ class SignatureDocument < ActiveRecord::Base
       Rails.logger.warn('No images and/or tags to connect for Signature Doc id: ' + self.id.to_s)
       return
     end
+  end
 
+  # Convert the PDF document into a series of signature_document_images
+  def generate_document_images
+    #remove the current document images
+    self.signature_document_images.map(&:destroy)
+
+    #  convert -density 200 -quality 80 file.pdf file.png
+    image_file = self.doc.path.gsub(/\.pdf/, '.png')
+
+    line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + SignatureDocumentImage::RES.to_s + ' -sOutputFile=:image_file :pdf_file')
+    line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
+
+    page_count = PDF::Reader.new(self.doc.path).page_count
+
+    if page_count and page_count > 0
+      filename = image_file.gsub(/\.png/, '')
+      extension = '.png'
+      for index in (1...page_count+1)
+        self.signature_document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
+      end
+    end
+
+    if self.signature_tag_fields.present?
+      connect_tags_to_images
+    end
+  end
+
+
+  # create signature_tag_fields
+  def process_tag_fields
+    if self.signature_tag_fields.blank?
+      tmp_csv_file = Rails.root.to_s + '/tmp/' + self.doc_file_name.gsub(/\.pdf/, '.csv')
+      removeCsv = Cocaine::CommandLine.new('rm', tmp_csv_file)
+
+      line = Cocaine::CommandLine.new(PDF2TXT, '-t tag -o :csv_output_file :pdf_input_file')
+      begin
+        line.run(:csv_output_file => tmp_csv_file,
+                 :pdf_input_file => self.doc.path)
+      rescue Cocaine::ExitStatusError => e
+        removeCsv.run
+        e
+      end
+
+      CSV.foreach(tmp_csv_file) do |row|
+        attr = {
+            page: row[0].to_i,
+            x: row[1].to_f,
+            y: row[2].to_f,
+            width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER),
+            height: (row[4].to_f - row[2].to_f),
+            name: parse_tag_name(row[5]),
+            tag_type: get_tag_type(row[5])
+        }
+
+        self.signature_tag_fields.create(attr)
+      end
+
+      if self.signature_document_images.present?
+        connect_tags_to_images
+      end
+
+      removeCsv.run
+
+    end
   end
 
   # fill in the signature tag fields on the pdf with values
@@ -231,11 +210,11 @@ class SignatureDocument < ActiveRecord::Base
             tag_fields.each do |tag|
               pdf.canvas do
                 pdf.fill_color 'ffffff'
-                pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height + HEIGHT_BUFFER)
+                pdf.fill_rectangle([tag.x, tag.y + tag.height - HEIGHT_BUFFER], tag.width, tag.height + HEIGHT_BUFFER)
                 unless options && options[:set_blank]
                   pdf.fill_color '000000'
                   pdf.text_box(tag.value || tag.tag_type.upcase + ' FIELD',
-                               at: [tag.x, tag.y + tag.height],
+                               at: [tag.x, tag.y + tag.height - HEIGHT_BUFFER],
                                height: tag.height + HEIGHT_BUFFER,
                                valign: :center) if !tag.signature?
                 end
@@ -250,6 +229,133 @@ class SignatureDocument < ActiveRecord::Base
 
     replace_file(output, input)
   end
+
+  def draw_signature(sig_type, data)
+    output = self.doc.path.gsub(/\.pdf/, '-signed.pdf')
+    input = self.doc.path
+    page_count = PDF::Reader.new(input).page_count
+
+    Prawn::Document.generate(output, :skip_page_creation => true) do |pdf|
+      page_count.times do |num|
+        pdf.start_new_page(:template => input, :template_page => num+1)
+
+        tag_fields = self.signature_tag_fields.where(page: num+1).signature
+        if tag_fields.present?
+          tag_fields.each do |tag|
+            pdf.canvas do
+              #White rectangle to 'erase' previous signature
+              pdf.fill_color 'ffffff'
+              pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height + HEIGHT_BUFFER)
+              pdf.fill_color '000000'
+
+              if sig_type == DRAWN_SIG
+                # Overlay the drawn signature on top of the signature field
+                pdf.image(data, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height])
+              elsif sig_type == TYPED_SIG
+                # Place the typed Signature on top of the signature field
+                pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
+                  #pdf.font("/Library/Fonts/pilgiche.ttf") do
+                  pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height + HEIGHT_BUFFER, size: tag.height, valign: :center
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    replace_file(output, input)
+  end
+
+  # accepts options[:overwrite], which overwrites the existing summary page
+  def append_summary_page(options = {})
+    output = self.doc.path.gsub(/\.pdf/, '-with-summary.pdf')
+    input = self.doc.path
+    page_count = PDF::Reader.new(input).page_count
+
+    Prawn::Document.generate(output, :skip_page_creation => true) do |pdf|
+
+      if options and options[:overwrite] and page_count > 0
+        page_count -= 1
+      end
+
+      # copy previous pages
+      page_count.times do |num|
+        pdf.start_new_page(:template => input, :template_page => num+1)
+      end
+
+      # append a last page
+      pdf.start_new_page
+      doc_width = pdf.bounds.bottom_right[0]
+      vspace1 = 16
+      vspace2 = 4
+
+      pdf.text('Legal Simplicity Signature Authentication', size: 20, style: :bold, align: :center)
+
+      pdf.bounding_box([0, pdf.bounds.top_left[1] - (20 + vspace1)], width: doc_width/2) do
+        pdf.text('Ryan Logue', align: :left)
+        pdf.move_down(vspace2)
+        pdf.text('02/24/1840', align: :left)
+        pdf.move_down(vspace2)
+        pdf.text('email@legal.co', align: :left)
+      end
+
+      pdf.bounding_box([doc_width/2, pdf.bounds.top_left[1] - (20 + vspace1)], width: doc_width/2) do
+        pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
+          pdf.text('Ryan Logue', size: 24, align: :center)
+        end
+      end
+
+      pdf.move_down(40) #approximate height of the header bounding boxes
+      pdf.stroke_horizontal_rule
+      pdf.move_down(vspace1)
+      pdf.text('Document History', size: 16, style: :bold, align: :center)
+      pdf.move_down(vspace2)
+      pdf.text(self.doc_file_name)
+      pdf.move_down(vspace2)
+      pdf.text('Transaction ID [generate random number for each signature]')
+
+      pdf.move_down(vspace1)
+
+      pdf.text('<b><u>Document Created (original upload)</b></u>', inline_format: true)
+      pdf.move_down(vspace2)
+      pdf.text('Calvin Myers')
+      pdf.move_down(vspace2)
+      pdf.text('calvinmyers401@gmail.com')
+      pdf.move_down(vspace2)
+      pdf.text('IP Address: 168.34.33.33')
+      pdf.move_down(vspace2)
+      pdf.text('May 15, 2013, at 12:39 p.m.')
+
+      pdf.move_down(vspace1)
+
+      pdf.text('<b><u>Document Viewed</b></u>', inline_format: true)
+      pdf.move_down(vspace2)
+      pdf.text('Ryan Logue')
+      pdf.move_down(vspace2)
+      pdf.text('ryan@legalsimplicity.co')
+      pdf.move_down(vspace2)
+      pdf.text('IP Address: 100.200.300.45')
+      pdf.move_down(vspace2)
+      pdf.text('May 15, 2013, at 1:22 p.m.')
+
+      pdf.move_down(vspace1)
+
+      pdf.text('<b><u>Document Signed</b></u>', inline_format: true)
+      pdf.move_down(vspace2)
+      pdf.text('Ryan Logue')
+      pdf.move_down(vspace2)
+      pdf.text('ryan@legalsimplicity.co')
+      pdf.move_down(vspace2)
+      pdf.text(self.signed_ip)
+      pdf.move_down(vspace2)
+      pdf.text(self.signed_at.to_s)
+
+    end
+
+    replace_file(output, input)
+  end
+
 
   def replace_file(replacing_file, replaced_file)
     line = Cocaine::CommandLine.new('mv', ':new_file :original_file')
