@@ -2,7 +2,7 @@ require 'csv'
 require 'date'
 
 class SignatureDocument < ActiveRecord::Base
-  attr_accessible :signed_at, :signed_ip, :id, :doc
+  attr_accessible :signed_at, :signed_ip, :id, :doc, :has_summary
   # TODO: don't store in public folder - create an authenticated route for downloading files
   # TODO? obfuscate the filename and url with https://github.com/thoughtbot/paperclip#uri-obfuscation
   has_attached_file :doc
@@ -79,12 +79,16 @@ class SignatureDocument < ActiveRecord::Base
       draw_signature(sig_type, data)
     end
 
+    record_signature(ip_address)
+
     if options and options[:append_summary]
-      append_summary_page(overwrite: self.signed?)
-      generate_document_images
+      if sig_type == DRAWN_SIG
+        append_summary_page(overwrite: self.has_summary, sig_image: sig_file)
+      elsif sig_type == TYPED_SIG
+        append_summary_page(overwrite: self.has_summary, sig_text: data)
+      end
     end
 
-    record_signature(ip_address)
     generate_document_images
   end
 
@@ -301,8 +305,12 @@ class SignatureDocument < ActiveRecord::Base
       end
 
       pdf.bounding_box([doc_width/2, pdf.bounds.top_left[1] - (20 + vspace1)], width: doc_width/2) do
-        pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
-          pdf.text('Ryan Logue', size: 24, align: :center)
+        if options and options[:sig_image]
+          pdf.image(options[:sig_image], position: :right, fit: [doc_width/2, 60])
+        elsif options and options[:sig_text]
+          pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
+            pdf.text(options[:sig_text], size: 24, align: :center)
+          end
         end
       end
 

@@ -6,6 +6,7 @@ class CreateSignatureDocuments < ActiveRecord::Migration
       t.string :doc_file_name
       t.string :doc_content_type
       t.integer :doc_file_size
+      t.boolean :has_summary
       t.datetime :doc_updated_at
 
       t.timestamps
