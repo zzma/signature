@@ -16,7 +16,7 @@ class SignatureDocument < ActiveRecord::Base
   TYPED_SIG = 'text'
 
   WIDTH_BUFFER = 2 # additional width added to the tag fields
-  HEIGHT_BUFFER = 2 # additional height added to the tag fields
+  HEIGHT_BUFFER = -6 # additional height added to the tag fields
 
   has_many :signature_tag_fields, dependent: :destroy
   has_many :signature_document_images, dependent: :destroy
@@ -98,12 +98,12 @@ class SignatureDocument < ActiveRecord::Base
   # Handle tag names of the form {{!tag_name}} and parse them to tag_name
   # Logs a warning if the tag name is of improper form
   def parse_tag_name(str)
-    tag_name = str.gsub(/^.*\{\{!(?<tag>.*)\}\}.*$/,'\k<tag>')
+    tag_name = str.gsub(/^.*\{\{(?<tag>.*)\}\}.*$/,'\k<tag>')
     if tag_name == str
       Rails.logger.warn('Improper tag name: ' + str)
-      tag_name.strip
+      tag_name.strip.gsub(/^[-]+|\.|[-]+$/,'')
     else
-      tag_name.strip
+      tag_name.strip.gsub(/^[-]+|\.|[-]+$/,'')
     end
   end
 
@@ -180,7 +180,7 @@ class SignatureDocument < ActiveRecord::Base
             x: row[1].to_f,
             y: row[2].to_f,
             width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER),
-            height: (row[4].to_f - row[2].to_f),
+            height: (row[4].to_f - row[2].to_f + HEIGHT_BUFFER),
             name: parse_tag_name(row[5]),
             tag_type: get_tag_type(row[5])
         }
@@ -214,12 +214,13 @@ class SignatureDocument < ActiveRecord::Base
             tag_fields.each do |tag|
               pdf.canvas do
                 pdf.fill_color 'ffffff'
-                pdf.fill_rectangle([tag.x, tag.y + tag.height - HEIGHT_BUFFER], tag.width, tag.height + HEIGHT_BUFFER)
+                pdf.fill_rectangle([tag.x, tag.y + tag.height + 2], tag.width, tag.height + 2)
                 unless options && options[:set_blank]
                   pdf.fill_color '000000'
                   pdf.text_box(tag.value || tag.tag_type.upcase + ' FIELD',
-                               at: [tag.x, tag.y + tag.height - HEIGHT_BUFFER],
-                               height: tag.height + HEIGHT_BUFFER,
+                               at: [tag.x, tag.y + tag.height],
+                               height: tag.height,
+                               size: tag.height.round,
                                valign: :center) if !tag.signature?
                 end
               end
@@ -249,7 +250,7 @@ class SignatureDocument < ActiveRecord::Base
             pdf.canvas do
               #White rectangle to 'erase' previous signature
               pdf.fill_color 'ffffff'
-              pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height + HEIGHT_BUFFER)
+              pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height)
               pdf.fill_color '000000'
 
               if sig_type == DRAWN_SIG
@@ -257,9 +258,8 @@ class SignatureDocument < ActiveRecord::Base
                 pdf.image(data, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height])
               elsif sig_type == TYPED_SIG
                 # Place the typed Signature on top of the signature field
-                pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
-                  #pdf.font("/Library/Fonts/pilgiche.ttf") do
-                  pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height + HEIGHT_BUFFER, size: tag.height, valign: :center
+                pdf.font("#{Rails.root}/app/assets/fonts/signature/tangerine_regular.ttf") do
+                  pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height, size: tag.height, valign: :center
                 end
               end
             end
@@ -308,7 +308,7 @@ class SignatureDocument < ActiveRecord::Base
         if options and options[:sig_image]
           pdf.image(options[:sig_image], position: :right, fit: [doc_width/2, 60])
         elsif options and options[:sig_text]
-          pdf.font("#{Rails.root}/app/assets/fonts/signature/pilgiche.ttf") do
+          pdf.font("#{Rails.root}/app/assets/fonts/signature/tangerine_regular.ttf") do
             pdf.text(options[:sig_text], size: 24, align: :center)
           end
         end

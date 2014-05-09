@@ -476,7 +476,7 @@ var DownloadManager = (function PDFDownloadClosure() {
 var SignatureTool = (function(){
     var DRAWN_SIG = 'sig',
         TYPED_SIG = 'text',
-        TYPE_FONT = 'Pilgiche',
+        TYPE_FONT = 'tangerine',
         TYPE_FONT_URL = 'http://fonts.googleapis.com/css?family=Calligraffitti';
 
 
@@ -526,8 +526,7 @@ var SignatureTool = (function(){
             this.typeText = document.getElementById('signatureType');
 
 //   font is already being set with @font-face in the css
-//   this.setTypeFont(TYPE_FONT, TYPE_FONT_URL);
-            this.typeText.setAttribute('style', "font-family: '" + TYPE_FONT + "', 'cursive' !important");
+            this.setTypeFont(TYPE_FONT, TYPE_FONT_URL);
 
             this.nameInput = document.getElementById('nameInput');
 
@@ -607,13 +606,27 @@ var SignatureTool = (function(){
 
         },
         setTypeFont: function SignatureModalSetTypeFont(fontName, fontUrl) {
-            var fontLink = document.createElement('link');
-            fontLink.setAttribute('href', fontUrl);
-            fontLink.setAttribute('rel', 'stylesheet');
-            fontLink.setAttribute('type', 'text/css');
+//            //Activate a web-font
+//            var fontLink = document.createElement('link');
+//            fontLink.setAttribute('href', fontUrl);
+//            fontLink.setAttribute('rel', 'stylesheet');
+//            fontLink.setAttribute('type', 'text/css');
+//
+//            var head = document.getElementsByTagName('head')[0];
+//            head.appendChild(fontLink);
 
-            var head = document.getElementsByTagName('head')[0];
-            head.appendChild(fontLink);
+            //Eagerly load a custom font
+            var s = document.createElement('span');
+            s.innerHTML = '&nbsp;';
+            s.setAttribute('style', "font-family: 'tangerine' !important");
+            s.style.visibility = 'hidden';
+            s.style.position = 'absolute';
+            s.style.top = '0px';
+            s.style.left = '0px';
+            s.style.height = '0px';
+            s.style.width = '0px';
+            document.body.appendChild(s);
+
 
             if (!this.typeText) {
                 console.warn('typeText not assigned yet');
