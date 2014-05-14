@@ -7,11 +7,8 @@ module Signature
 
       desc 'Signature Install Generator!!'
 
-      def copy_models
-        directory '../../../../app/models', 'app/models'
-      end
-
       def copy_fonts
+        puts 'Copying fonts...'
         directory '../../../../app/assets/fonts', 'app/assets/fonts'
       end
     end
