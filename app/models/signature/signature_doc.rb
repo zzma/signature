@@ -13,7 +13,11 @@ module Signature
       # TODO: don't store in public folder - create an authenticated route for downloading files
       # TODO? obfuscate the filename and url with https://github.com/thoughtbot/paperclip#uri-obfuscation
 
-      has_attached_file :doc
+      has_attached_file :doc,
+                        :url => "/system/:rails_env/:class/:attachment/:id/:filename"
+
+      # TODO: edit this validation so that document can handle non-pdf files (also add a check to after_commit: process_document)
+
       validates_attachment_content_type :doc, :content_type => 'application/pdf'
 
       PDF2TXT = 'pdf2txt.py'
