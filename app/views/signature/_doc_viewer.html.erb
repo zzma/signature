@@ -46,10 +46,8 @@
       </div>
     </div>
     <div id="viewerContainer">
-      <% document.signature_tag_fields  %>
-
-      <%= content_tag "div", id: "viewer", data: { fields: document.signature_tag_fields.map(&:scaled_attributes)} do %>
-          <% document.signature_document_images.each_with_index do |doc_image, index| %>
+      <%= content_tag "div", id: "viewer", data: { fields: document.tag_fields.map(&:scaled_attributes)} do %>
+          <% document.document_images.each_with_index do |doc_image, index| %>
               <div id="<%= 'pageContainer' + index.to_s %>" class="page">
                 <a name="<%= index %>"></a>
                 <div id= "<%= 'imageWrapper' + index.to_s %>" class="imageWrapper">
