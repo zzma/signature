@@ -5,10 +5,7 @@ module Signature
     extend ActiveSupport::Concern
 
     included do
-      attr_accessible :height, :name, :value, :signature_document, :signature_document_image, :tag_type, :width, :x, :y, :page
-
-      belongs_to :signature_document
-      belongs_to :signature_document_image
+      attr_accessible :height, :name, :value, :document, :document_image, :tag_type, :width, :x, :y, :page
 
       #from document_image - TODO: refactor constants
       RES_SCALE = 3
@@ -30,10 +27,11 @@ module Signature
     end
 
     def scaled_attributes
+      height_adjust = (self.tag_type == TAG_TYPES[:signature]) ? 8 : 0
       return {
           x: self.x * RES_SCALE,
           y: self.y * RES_SCALE,
-          height: self.height * RES_SCALE,
+          height: (self.height + height_adjust) * RES_SCALE,
           width: self.width * RES_SCALE,
           tag_type: self.tag_type,
           page: self.page

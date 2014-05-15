@@ -49,10 +49,10 @@ module Signature
     end
 
     def unique_tag_fields
-      return self.tag_fields.uniq! {|tf| tf.name }
+      return self.tag_fields.uniq {|tf| tf.name }
     end
 
-    # Create a deep copy of the signature_document, with the appropriate signature_document_images
+    # Create a deep copy of the signature_document, with the appropriate document_images
     # and tag_fields
     def deep_copy
 
@@ -142,7 +142,7 @@ module Signature
 
       if images.present? and tag_fields.present?
         tag_fields.each do |tag|
-          tag.update_attributes(signature_document_image: self.document_images.where(page: tag.page).first)
+          tag.update_attributes(document_image: self.document_images.where(page: tag.page).first)
         end
       else
         Rails.logger.warn('No images and/or tags to connect for Signature Doc id: ' + self.id.to_s)
@@ -232,7 +232,7 @@ module Signature
               tag_fields.each do |tag|
                 pdf.canvas do
                   pdf.fill_color 'ffffff'
-                  pdf.fill_rectangle([tag.x, tag.y + tag.height + 2], tag.width, tag.height + 2)
+                  pdf.fill_rectangle([tag.x, tag.y + tag.height + 3], tag.width, tag.height + 4)
                   unless options && options[:set_blank]
                     pdf.fill_color '000000'
                     pdf.text_box(tag.value || tag.tag_type.upcase + ' FIELD',
@@ -273,11 +273,11 @@ module Signature
 
                 if sig_type == DRAWN_SIG
                   # Overlay the drawn signature on top of the signature field
-                  pdf.image(data, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height])
+                  pdf.image(data, at: [tag.x, tag.y + tag.height + 2], fit: [tag.width, tag.height + 2])
                 elsif sig_type == TYPED_SIG
                   # Place the typed Signature on top of the signature field
                   pdf.font("#{Rails.root}/app/assets/fonts/signature/tangerine_regular.ttf") do
-                    pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height, size: tag.height, valign: :center
+                    pdf.text_box data, at: [tag.x, tag.y + tag.height + 2], height: tag.height + 2, size: tag.height + 2, valign: :center
                   end
                 end
               end

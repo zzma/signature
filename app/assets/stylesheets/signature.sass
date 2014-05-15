@@ -21,11 +21,12 @@ $link-blue: #4169E1
   font-weight: normal
   font-style: normal
 
-input, button, select
-  font: message-box
-  outline: none
+.outerViewer
+  input, button, select
+    font: message-box
+    outline: none
 
-.hidden
+.sigHidden
   display: none
 
 .noSelect
@@ -227,7 +228,7 @@ input, button, select
 
 .toolbarLabel
   min-width: 16px
-  padding: 3px 6px 3px 2px
+  padding: 5px 6px 3px 2px
   margin: 4px 2px 4px 0
   border: 1px solid transparent
   border-radius: 2px
@@ -372,56 +373,57 @@ input, button, select
   position: relative
   > img
     background-color: white
-.footer
+.sigFooter
   position: absolute
   bottom: 0
   left: 0
   right: 0
   box-shadow: 0px 0px 2px #000000
-#footerContainer
+#sigFooterContainer
   position: relative
   width: 100%
   height: $footer-height
   z-index: $higher-z
   line-height: $footer-height - 5px
 
-button
-  display: inline-block
-  padding: 4px 12px
-  margin-bottom: 0
-  font-size: 16px
-  line-height: 24px
-  text-align: center
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75)
-  vertical-align: middle
-  cursor: pointer
-  color: #ffffff
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25)
-  border-width: 1px
-  -webkit-border-radius: 4px
-  -moz-border-radius: 4px
-  border-radius: 4px
-  -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
-  -moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
-  font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif
+.sigFooter, .modalFooter
+  button
+    display: inline-block
+    padding: 4px 12px
+    margin-bottom: 0
+    font-size: 16px
+    line-height: 24px
+    text-align: center
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75)
+    vertical-align: middle
+    cursor: pointer
+    color: #ffffff
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25)
+    border-width: 1px
+    -webkit-border-radius: 4px
+    -moz-border-radius: 4px
+    border-radius: 4px
+    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
+    -moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05)
+    font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif
 
-button:hover
-  text-decoration: none
-  background-position: 0 -15px
-  -webkit-transition: background-position 0.1s linear
-  -moz-transition: background-position 0.1s linear
-  -o-transition: background-position 0.1s linear
-  transition: background-position 0.1s linear
+  button:hover
+    text-decoration: none
+    background-position: 0 -15px
+    -webkit-transition: background-position 0.1s linear
+    -moz-transition: background-position 0.1s linear
+    -o-transition: background-position 0.1s linear
+    transition: background-position 0.1s linear
 
-button:active
-  background-image: none
-  outline: 0
-  -webkit-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
-  -moz-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
+  button:active
+    background-image: none
+    outline: 0
+    -webkit-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
+    -moz-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
 
-#footerContainerLeft
+#sigFooterContainerLeft
   float: left
   padding-left: 15px
 
@@ -457,7 +459,7 @@ button:active
     cursor: default
     box-shadow: none
 
-#footerContainerRight
+#sigFooterContainerRight
   float: right
   padding-right: 15px
 
@@ -539,6 +541,8 @@ ul.modalTabs
   padding: 0
   cursor: default
   background-color: #ffffff
+  margin-top: 0px
+  margin-bottom: 0px
 
   li
     display: inline-block

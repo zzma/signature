@@ -1,4 +1,4 @@
-<div id="outerViewerContainer" data-signature="<%= !view_only %>">
+<div id="outerViewerContainer" class="outerViewer" data-signature="<%= !view_only %>">
   <div id="mainViewerContainer">
     <div class="toolbar">
       <div id="toolbarContainer">
@@ -57,12 +57,12 @@
           <% end %>
       <% end %>
     </div>
-    <div class="footer <%= view_only ? 'hidden' : ''%>">
-      <div id="footerContainer">
-        <div id="footerContainerLeft">
+    <div class="sigFooter <%= view_only ? 'sigHidden' : ''%>">
+      <div id="sigFooterContainer">
+        <div id="sigFooterContainerLeft">
           <button id="nextSignature" class="">Next Signature</button>
         </div>
-        <div id="footerContainerRight">
+        <div id="sigFooterContainerRight">
           <button id="finishSigning" class="inactive">Submit <span class="desktop-only-inline">Document</span></button>
         </div>
       </div>
@@ -86,7 +86,7 @@
 
       <div class="modalContent">
         <div id="signaturePad"></div>
-        <div id="signatureTypeWrapper" class="hidden">
+        <div id="signatureTypeWrapper" class="sigHidden">
             <div id="signatureType"></div>
         </div>
         <hr id="typeUnderline">
