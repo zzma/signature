@@ -92,7 +92,7 @@ var CustomStyle = (function CustomStyleClosure() {
     return CustomStyle;
 })();
 
-function scrollIntoView(element, spot) {
+function scrollIntoView(element, spot, animate) {
     // Assuming offsetParent is available (it's not available when viewer is in
     // hidden iframe or object). We have to scroll: if the offsetParent is not set
     // producing the error. See also animationStartedClosure.
@@ -125,9 +125,11 @@ function scrollIntoView(element, spot) {
         }
     }
 
-//    parent.scrollTop = offsetY;
-    //TODO: gradual scroll - remove JQuery dependence
-    $(parent).animate({scrollTop: offsetY}, 500);
+    if (animate) {
+        $(parent).animate({scrollTop: offsetY}, 500);
+    } else {
+        parent.scrollTop = offsetY;
+    }
 }
 
 var PDFView = {
@@ -142,6 +144,9 @@ var PDFView = {
     lastScroll: 0,
     currentPosition: null,
     currentPageNumber: 1,
+    currentDocumentIndex: 0, //0-based document index
+    documentCount: null, //total number of documents
+
 
     initialize: function pdfViewInitialize() {
         var self = this;
@@ -152,6 +157,8 @@ var PDFView = {
 
         this.downloadManager = new DownloadManager();
         this.downloadManager.initialize();
+
+        this.documentCount = document.getElementsByClassName('documentContainer').length;
 
         this.initialized = true;
         container.addEventListener('scroll', function(){
@@ -176,7 +183,7 @@ var PDFView = {
         var scale = parseFloat(value);
 
         if (isNaN(scale)) {
-            var currentPage = this.pages[this.page - 1];
+            var currentPage = this.pages[0];
             var pageWidthScale = (this.container.clientWidth - SCROLLBAR_PADDING) /
                 currentPage._originalWidth;
             var pageHeightScale = (this.container.clientHeight - VERTICAL_PADDING) /
@@ -267,6 +274,40 @@ var PDFView = {
     download: function pdfViewDownload(){
         this.downloadManager.download();
     },
+    //set the current document index
+    set document(val) {
+        var event = document.createEvent('UIEvents');
+        event.initUIEvent('documentchange', false, false, window, 0);
+
+        //check if the value is within range
+        if (!(0 <= val && val < this.documentCount)) {
+            event.documentIndex = this.currentDocumentIndex;
+            window.dispatchEvent(event);
+            return;
+        }
+
+        if (val != this.currentDocumentIndex) {
+            //hide the old document
+            this._hideDocument(this.currentDocumentIndex);
+
+            this.currentDocumentIndex = val;
+
+            //show the new document
+            this._showDocument(this.currentDocumentIndex);
+
+            event.documentIndex = val;
+            window.dispatchEvent(event);
+
+            this.currentScale = DEFAULT_SCALE;
+            this._loadDocumentPages(this.currentDocumentIndex);
+
+            //reset the page count
+            this.page = 1;
+        }
+    },
+    get document() {
+        return this.currentDocumentIndex;
+    },
     navigateTo: function pdfViewNavigateTo(dest){
 
     },
@@ -276,7 +317,18 @@ var PDFView = {
     load: function pdfViewLoad(){
         var self = this;
 
-        var container = document.getElementById('viewer');
+        document.getElementById('numDocuments').innerHTML = 'Document <span id="documentNumber">2</span> of ' + this.documentCount;
+        this._loadDocumentPages(this.currentDocumentIndex);
+
+        //Set the initial document arrows
+        var event = document.createEvent('UIEvents');
+        event.initUIEvent('documentchange', false, false, window, 0);
+        event.documentIndex = this.currentDocumentIndex;
+        window.dispatchEvent(event);
+    },
+    _loadDocumentPages: function pdfView_loadDocumentPages(docIndex) {
+        var self = this;
+        var container = document.getElementById('viewer' + docIndex);
         var pagesCount = container.getElementsByTagName('img').length;
 
         document.getElementById('numPages').textContent = 'of ' + pagesCount;
@@ -296,7 +348,6 @@ var PDFView = {
         window.dispatchEvent(event);
 
         this.setScale(DEFAULT_SCALE);
-
     },
     getVisiblePages: function pdfViewGetVisiblePages() {
         return this.getVisibleElements(this.container, this.pages, true);
@@ -344,6 +395,13 @@ var PDFView = {
             });
         }
         return {first: first, last: last, views: visible};
+    },
+    _hideDocument: function pdfView_hideDocument(index) {
+        document.getElementById('document' + index).className += ' sigHidden';
+    },
+    _showDocument: function pdfView_showDocument(index) {
+        var el = document.getElementById('document' + index);
+        el.className = el.className.replace(/[ ]+sigHidden/, '');
     }
 }
 
@@ -395,12 +453,15 @@ var PageView = function pageView(element, id, scale, navigateTo) {
 
     this.scrollIntoView = function pageViewScrollIntoVIew(dest) {
         if (!dest) {
-            scrollIntoView(element)
+            scrollIntoView(element);
             return;
         }
     };
 }
 
+
+//TODO: implement download manager so that it downloads the current document
+// <input type="hidden" id="downloadLink" value="<%= document.doc.url(:original, timestamp: false)%>"/>
 
 var DownloadManager = (function PDFDownloadClosure() {
 
@@ -494,21 +555,8 @@ var SignatureTool = (function(){
         element: null,
         onSignatureHandler: null,
         undoButtonRenderer: function SignatureModalUndoButtonRenderer() {
-            // this === jSignatureInstance
             var $undoButton = $('<input type="button" value="Undo" id="undoButton" />')
                     .appendTo(this.$controlbarUpper)
-
-//            // this centers the button against the canvas.
-//            var buttonWidth = $undoButton.width()
-//            $undoButton.css(
-//                'left'
-//                , Math.round(( this.canvas.width - buttonWidth ) / 2)
-//            )
-//            // IE 7 grows the button. Correcting for that.
-//            if ( buttonWidth !== $undoButton.width() ) {
-//                $undoButton.width(buttonWidth)
-//            }
-
             return $undoButton
         },
         initialize: function SignatureModalInitialize() {
@@ -564,12 +612,12 @@ var SignatureTool = (function(){
                 self.typeTab.className = '';
                 self.drawTab.className = 'active';
                 self.drawPad.className = '';
-                self.typePad.className = 'hidden';
+                self.typePad.className = 'sigHidden';
             });
             this.typeTab.addEventListener('click', function(evt) {
                 self.drawTab.className = '';
                 self.typeTab.className = 'active';
-                self.drawPad.className = 'hidden';
+                self.drawPad.className = 'sigHidden';
                 self.typePad.className = '';
             });
             this.nameInput.addEventListener('keyup', function(evt){
@@ -651,7 +699,6 @@ var SignatureTool = (function(){
             initialize: function SignatureInitialize() {
                 //TODO: some validation
             }
-
         };
 
         s.initialize();
@@ -664,13 +711,15 @@ var SignatureTool = (function(){
         finishButton: null,
         signatureModal: null,
         nextHandler: null,
+        submitHandler: null,
         initialize: function SignatureToolViewInitialize() {
             this.nextButton = document.getElementById('nextSignature');
             this.finishButton = document.getElementById('finishSigning');
 
             this.disableSubmit();
 
-            var self = this;
+            this.setButtons(PDFView.documentCount <= 1);
+
             SignatureModal.initialize();
         },
         displaySignatureModal: function SignatureToolViewDisplaySignatureModal() {
@@ -701,17 +750,23 @@ var SignatureTool = (function(){
             this.nextButton.removeEventListener('click', this.nextHandler);
             this.finishButton.className = '';
             this.finishButton.addEventListener('click', this.submitHandler);
+        },
+        setButtons: function(lastDocument) {
+            if (lastDocument) {
+                this.finishButton.innerHTML = 'Submit <span class="desktop-only-inline">Document</span>';
+            } else {
+                this.finishButton.innerHTML = 'Next <span class="desktop-only-inline">Document</span>';
+            }
         }
     }
-
-
 
     var SignatureFields = {
         nextSignature: null,
         selectedSignature: null,
         fields: [],
         initialize: function SignatureFieldsInitialize() {
-            var data = JSON.parse(document.getElementById('viewer').getAttribute('data-fields'));
+            var data = JSON.parse(document.getElementById('viewer' + PDFView.document).getAttribute('data-fields'));
+            var fields = this.fields;
             data.sort(function(a,b) {
                 if (a.page > b.page) {
                     return 1;
@@ -738,14 +793,15 @@ var SignatureTool = (function(){
             var count = 0;
             for (var i = 0, len = data.length; i < len; i++) {
                 if (data[i].tag_type == 'signature') {
-                    var container = document.getElementById('imageWrapper' + (data[i].page - 1));
+                    var documentContainer = document.getElementById('document' + PDFView.document);
+                    var container = documentContainer.getElementsByClassName('imageWrapper')[(data[i].page - 1)];
                     data[i].index = count++;
-                    this.fields.push(new Field(container, data[i]));
+                    fields.push(new Field(container, data[i]));
                 }
             }
 
             //Sort the list of fields by order in which they occur in the document
-            this.fields.sort(function(a, b){
+            fields.sort(function(a, b){
                 if (a.page > b.page) {
                     return 1;
                 }
@@ -777,13 +833,11 @@ var SignatureTool = (function(){
             });
         },
         scrollToField: function SignatureFieldsScrollToField(index) {
-            console.log('scrolling to ' + index);
             if (index >= 0 && index < this.fields.length) {
-                scrollIntoView(this.fields[index].element);
+                scrollIntoView(this.fields[index].element, null ,true);
             }
         },
         scrollToNext: function SignatureFieldsScrollToNext() {
-            console.log(this.nextSignature);
             this.scrollToField(this.nextSignature);
         },
         setSelected: function SignatureFieldsSetSelected(selectedEl) {
@@ -841,17 +895,22 @@ var SignatureTool = (function(){
                 }
             }
 
-            console.log('Setting next unsigned signature to: ' + nextIndex);
             this.nextSignature = nextIndex;
         },
         allSigned: function SignatureFieldAllSigned() {
             return (this.nextSignature == -1);
-        }, onFieldClick: function SignatureFieldsOnFieldClick(handler) {
+        },
+        onFieldClick: function SignatureFieldsOnFieldClick(handler) {
             this.fields.forEach(function(field) {
                 field.onClick(handler);
             });
+        },
+        destroyCurrent: function SignatureFieldsDestroyCurrent() {
+            delete this.fields;
+            this.fields = [];
+            this.nextSignature = null;
+            this.selectedSignature = null;
         }
-
     };
 
     var Field = function Field(container, options) {
@@ -872,7 +931,7 @@ var SignatureTool = (function(){
 
                 var el = this.element = document.createElement('div');
                 el.className = 'signatureField noSelect';
-                el.setAttribute('id', 'signatureField' + options.index)
+                el.setAttribute('id', 'signatureField' + PDFView.document + '-' + options.index)
                 el.style.position = 'absolute';
 
                 container.appendChild(el);
@@ -906,7 +965,6 @@ var SignatureTool = (function(){
                 this.currentY = this.originalY * scale;
                 this.currentHeight = this.originalHeight * scale;
                 this.currentWidth = this.originalWidth * scale;
-//                this.toConsole();
             },
             toConsole: function FieldToConsole(){
                 console.log({
@@ -951,43 +1009,42 @@ var SignatureTool = (function(){
         initialize: function SignatureToolInitialize() {
             var self = this;
             SignatureToolView.initialize();
-            if (!viewOnly()){
-                SignatureFields.initialize();
-            }
 
-            SignatureFields.onFieldClick(function(){
-                SignatureFields.setSelected(this);
-                if (self.signature) {
-                    SignatureFields.applySignature(self.signature);
-                    if (SignatureFields.allSigned()) SignatureToolView.enableSubmit();
-                } else {
-                    SignatureToolView.displaySignatureModal();
-                }
-            });
+            this._createSignatureFields();
 
             SignatureToolView.onSignature(this.onSignatureHandler);
 
             SignatureToolView.onNext(function(){
                 SignatureFields.scrollToNext();
             });
+
             SignatureToolView.onSubmit(function(){
-                var sig = self.signature,
-                    sigType = document.getElementById('sig_type'),
-                    sigData = document.getElementById('sig_data'),
-                    sigForm = document.getElementById('sig_form');
+                if (PDFView.document < PDFView.documentCount - 1) {
+                    PDFView.document++;
+                    SignatureToolView.setButtons(PDFView.document == PDFView.documentCount - 1);
+                    SignatureToolView.nextButton.className = '';
+                    SignatureToolView.disableSubmit();
+                } else if (PDFView.document == PDFView.documentCount - 1) {
+                    var sig = self.signature,
+                        sigType = document.getElementById('sig_type'),
+                        sigData = document.getElementById('sig_data'),
+                        sigForm = document.getElementById('sig_form');
 
 
-                //Send data to the server
-                if (sig.type === DRAWN_SIG) {
-                    sigType.value =  DRAWN_SIG;
-                    sigData.value = $('#signaturePad').jSignature('getData', 'default');
-                } else if (sig.type === TYPED_SIG) {
-                    sigType.value = TYPED_SIG;
-                    sigData.value = sig.data;
+                    //Send data to the server
+                    if (sig.type === DRAWN_SIG) {
+                        sigType.value =  DRAWN_SIG;
+                        sigData.value = $('#signaturePad').jSignature('getData', 'default');
+                    } else if (sig.type === TYPED_SIG) {
+                        sigType.value = TYPED_SIG;
+                        sigData.value = sig.data;
+                    }
+
+                    sigForm.submit();
                 }
-
-                sigForm.submit();
             });
+
+
 
             this.initialized = true;
         },
@@ -1008,6 +1065,29 @@ var SignatureTool = (function(){
             SignatureFields.applySignature(sig);
             SignatureToolView.hideSignatureModal();
             if (SignatureFields.allSigned()) SignatureToolView.enableSubmit();
+        },
+        updateFields: function SignatureToolUpdateFields() {
+            SignatureFields.destroyCurrent();
+            this._createSignatureFields();
+            setTimeout(function(){ST.updateView(PDFView.currentScale);}, 100);
+        },
+        _createSignatureFields: function SignatureTool_CreateSignatureFields() {
+            var self = this;
+            if (!viewOnly()){
+                SignatureFields.initialize();
+
+                SignatureFields.onFieldClick(function(){
+                    SignatureFields.setSelected(this);
+                    if (self.signature) {
+                        SignatureFields.applySignature(self.signature);
+                        if (SignatureFields.allSigned()) SignatureToolView.enableSubmit();
+                    } else {
+                        SignatureToolView.displaySignatureModal();
+                    }
+                });
+
+                setTimeout(function(){ST.updateView(PDFView.currentScale);}, 200);
+            }
         }
     }
 
@@ -1021,7 +1101,6 @@ function webViewerLoad(evt) {
 
     // TODO: initialize the signature tool after images have all been loaded - use promises
     ST.initialize();
-    setTimeout(function(){ST.updateView(PDFView.currentScale);}, 100);
 
     var mainContainer = document.getElementById('mainViewerContainer');
     var outerContainer = document.getElementById('outerViewerContainer');
@@ -1073,6 +1152,18 @@ function webViewerLoad(evt) {
         function() {
             PDFView.download();
         });
+
+    if (viewOnly()) {
+        document.getElementById('previousDoc').addEventListener('click',
+            function(){
+                PDFView.document--;
+            });
+
+        document.getElementById('nextDoc').addEventListener('click',
+            function(){
+                PDFView.document++;
+            });
+    }
 
     PDFView.load();
 }
@@ -1130,6 +1221,20 @@ window.addEventListener('pagechange', function pagechange(evt) {
 
     document.getElementById('previous').disabled = (page <= 1);
     document.getElementById('next').disabled = (page >= PDFView.pages.length);
+}, true);
+
+window.addEventListener('documentchange', function documentchange(evt){
+    var doc = evt.documentIndex;
+
+    if (viewOnly()) {
+        document.getElementById('previousDoc').disabled = (doc <= 0);
+        document.getElementById('nextDoc').disabled = (doc >= PDFView.documentCount - 1);
+    }
+    document.getElementById('documentNumber').innerHTML = doc + 1;
+
+    if (doc > 0) {
+        ST.updateFields();
+    }
 }, true);
 
 function selectScaleOption(value) {

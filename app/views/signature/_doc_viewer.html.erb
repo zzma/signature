@@ -6,11 +6,11 @@
           <div id="toolbarViewerLeft">
             <div class="splitToolbarButton">
               <button class="toolbarButton pageUp" id="previous" title="Previous page">
-                <span>Previous</span>
+                <span>Previous page</span>
               </button>
               <div class="splitToolbarButtonSeparator"></div>
               <button class="toolbarButton pageDown" id="next" title="Next page">
-                <span>Next</span>
+                <span>Next page</span>
               </button>
             </div>
             <label class="toolbarLabel desktop-only-inline" for="pageNumber" id="pageNumberLabel">Page:</label>
@@ -40,21 +40,37 @@
                 <option value="2">200%</option>
               </select>
             </span>
+            <span class="toolbarLabel <%= documents.length <= 1 ? 'sigHidden' : '' %>" id="numDocuments">Document <span id="documentNumber">X</span> of Y</span>
+            <% if view_only %>
+                <div class="splitToolbarButton">
+                  <button class="toolbarButton previousDoc" id="previousDoc" title="Previous document">
+                    <span>Previous document</span>
+                  </button>
+                  <div class="splitToolbarButtonSeparator"></div>
+                  <button class="toolbarButton nextDoc" id="nextDoc" title="Next document">
+                    <span>Next document</span>
+                  </button>
+                </div>
+          <% end %>
+
           </div>
         </div>
         <!--<div id="loadingBar"></div>-->
       </div>
     </div>
     <div id="viewerContainer">
-      <%= content_tag "div", id: "viewer", data: { fields: document.tag_fields.map(&:scaled_attributes)} do %>
-          <% document.document_images.each_with_index do |doc_image, index| %>
+      <% documents.each_with_index do |document, doc_index| %>
+        <div id="<%= 'document' + doc_index.to_s %>" class="documentContainer <%= doc_index > 0 ? 'sigHidden' : ''%>">
+          <%= content_tag "div", id: "viewer#{doc_index}", data: { fields: document.tag_fields.map(&:scaled_attributes)} do %>
+            <% document.document_images.each_with_index do |doc_image, index| %>
               <div id="<%= 'pageContainer' + index.to_s %>" class="page">
-                <a name="<%= index %>"></a>
                 <div id= "<%= 'imageWrapper' + index.to_s %>" class="imageWrapper">
                   <img src="<%= doc_image.image.url %>"/>
                 </div>
               </div>
+            <% end %>
           <% end %>
+        </div>
       <% end %>
     </div>
     <div class="sigFooter <%= view_only ? 'sigHidden' : ''%>">
@@ -63,7 +79,7 @@
           <button id="nextSignature" class="">Next Signature</button>
         </div>
         <div id="sigFooterContainerRight">
-          <button id="finishSigning" class="inactive">Submit <span class="desktop-only-inline">Document</span></button>
+          <button id="finishSigning" class="inactive"></button>
         </div>
       </div>
     </div>
@@ -110,10 +126,11 @@
   </div>
 </div>
 
-<input type="hidden" id="downloadLink" value="<%= document.doc.url(:original, timestamp: false)%>"/>
-<%= form_tag('/sign/' + document.id.to_s, method: :post, id: 'sig_form') do %>
-    <input type="hidden" name="sig_type" id="sig_type"/>
-    <input type="hidden" name="sig_data" id="sig_data"/>
+<% if !view_only %>
+    <%= form_tag(submit_path, method: :post, id: 'sig_form') do %>
+        <input type="hidden" name="sig_type" id="sig_type"/>
+        <input type="hidden" name="sig_data" id="sig_data"/>
+    <% end %>
 <% end %>
 <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <%= javascript_include_tag "signature/doc_viewer.js" %>

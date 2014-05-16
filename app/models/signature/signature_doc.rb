@@ -41,6 +41,10 @@ module Signature
       RES_SCALE = 3
       RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
 
+      #TODO: add scopes
+      #scope :signed, lambda { where("signed_at is not NULL and signed_at != ''") }
+      #scope :unsigned, lambda { where("signed_at is NULL or signed_at == ''") }
+
       after_commit :process_document, :on => :create
     end
 
@@ -105,7 +109,11 @@ module Signature
         elsif sig_type == TYPED_SIG
           append_summary_page(overwrite: self.has_summary, sig_text: data)
         end
+
+        self.update_attributes(has_summary: true)
       end
+
+
 
       generate_document_images
     end
@@ -273,11 +281,11 @@ module Signature
 
                 if sig_type == DRAWN_SIG
                   # Overlay the drawn signature on top of the signature field
-                  pdf.image(data, at: [tag.x, tag.y + tag.height + 2], fit: [tag.width, tag.height + 2])
+                  pdf.image(data, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height + 2])
                 elsif sig_type == TYPED_SIG
                   # Place the typed Signature on top of the signature field
                   pdf.font("#{Rails.root}/app/assets/fonts/signature/tangerine_regular.ttf") do
-                    pdf.text_box data, at: [tag.x, tag.y + tag.height + 2], height: tag.height + 2, size: tag.height + 2, valign: :center
+                    pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height + 2, size: tag.height + 2, valign: :center
                   end
                 end
               end

@@ -193,6 +193,10 @@ $link-blue: #4169E1
     content: url(/assets/signature/toolbarButton-zoomIn.png)
   &.download::before
     content: url(/assets/signature/toolbarButton-download.png)
+  &.previousDoc::before
+    content: url(/assets/signature/toolbarButton-leftArrow.png)
+  &.nextDoc::before
+    content: url(/assets/signature/toolbarButton-rightArrow.png)
 
   &.download
     width: 95px
@@ -713,6 +717,9 @@ ul.modalTabs
   border: 0
   background-color: #3c3c3c
   height: 2px
+  
+#scaleSelectContainer
+  margin-top: 5px
   
 @media(min-width: 768px)
   .desktop-only-inline
