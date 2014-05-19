@@ -420,11 +420,11 @@ var PageView = function pageView(element, id, scale, navigateTo) {
 
         if (!image.complete || image.naturalWidth === 0) {
             image.onload = function (){
-                self._originalWidth = image.offsetWidth;
+                self._originalWidth = image.width;
                 PDFView.setScale(scale);
             }
         } else {
-            this._originalWidth = image.offsetWidth;
+            this._originalWidth = image.width;
             PDFView.setScale(scale);
         }
 
@@ -874,7 +874,7 @@ var SignatureTool = (function(){
                 var d = document.createElement('div');
                 d.innerHTML = sig.data;
                 d.setAttribute('style', "font-family: '" + TYPE_FONT + "', 'cursive' !important");
-                d.style.fontSize = Math.min(parent.offsetHeight - 6, (parent.offsetWidth/sig.data.length)) + 'px';
+                d.style.fontSize = Math.min(parent.offsetHeight - 2, (parent.offsetWidth/sig.data.length)) + 'px';
                 d.style.lineHeight = parent.offsetHeight + 'px';
 
                 parent.appendChild(d);

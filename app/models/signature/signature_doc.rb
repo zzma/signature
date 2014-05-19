@@ -243,11 +243,13 @@ module Signature
                   pdf.fill_rectangle([tag.x, tag.y + tag.height + 3], tag.width, tag.height + 4)
                   unless options && options[:set_blank]
                     pdf.fill_color '000000'
-                    pdf.text_box(tag.value || tag.tag_type.upcase + ' FIELD',
-                                 at: [tag.x, tag.y + tag.height],
-                                 height: tag.height,
-                                 size: tag.height.round,
-                                 valign: :center) if !tag.signature?
+                    if tag.value
+                      pdf.text_box(tag.value,
+                                   at: [tag.x, tag.y + tag.height],
+                                   height: tag.height,
+                                   size: tag.height.round,
+                                   valign: :center) if !tag.signature?
+                    end
                   end
                 end
               end
