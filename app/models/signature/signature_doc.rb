@@ -46,6 +46,7 @@ module Signature
       #scope :unsigned, lambda { where("signed_at is NULL or signed_at == ''") }
 
       after_commit :process_document, :on => :create
+      after_update :reprocess_document
     end
 
     def signed?
@@ -419,6 +420,12 @@ module Signature
 
     def record_signature(ip_address)
       self.update_attributes(signed_at: Time.now, signed_ip: ip_address)
+    end
+
+    def reprocess_document
+      if (self.doc_changed?)
+        process_document
+      end
     end
 
     def process_document
