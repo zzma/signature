@@ -46,7 +46,6 @@ module Signature
       #scope :unsigned, lambda { where("signed_at is NULL or signed_at == ''") }
 
       after_commit :process_document, :on => :create
-      after_update :reprocess_document
     end
 
     def signed?
@@ -123,11 +122,17 @@ module Signature
         self.update_attributes(has_summary: true)
       end
 
-
-
       generate_document_images
     end
 
+    # method to be called when the signature document attachment is changed
+    def reset_document
+      #delete tag_fields and document_images
+      self.tag_fields.each(&:destroy)
+      self.document_images.each(&:destroy)
+
+      process_document
+    end
 
     private
 
@@ -420,12 +425,6 @@ module Signature
 
     def record_signature(ip_address)
       self.update_attributes(signed_at: Time.now, signed_ip: ip_address)
-    end
-
-    def reprocess_document
-      if (self.doc_file_name_changed? || self.doc_file_size_changed? || self.doc_content_type_changed?)
-        process_document
-      end
     end
 
     def process_document
