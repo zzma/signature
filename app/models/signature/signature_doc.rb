@@ -90,6 +90,15 @@ module Signature
       populate_tags(set_blank: true)
     end
 
+    ##
+    # Adds a signature to the document. Permissible signature types are DRAWN_SIG and TYPED_SIG,
+    # which accepts base64 encoded bitmap data (PNG) and a string, respectively.
+    #
+    # additional options can be submitted to further identify the user, i.e.
+    # :signed_fullname, :signed_email,
+    # :created_at, :created_fullname, :created_email, :created_ip,
+    # :viewed_at, :viewed_fullname, :viewed_email, :viewed_ip
+
     def add_signature(sig_type, data, ip_address, options = {})
       sig_file = self.doc.path.gsub(/\.pdf/, '-drawn-signature.png')
       if sig_type == DRAWN_SIG
@@ -105,9 +114,9 @@ module Signature
 
       if options and options[:append_summary]
         if sig_type == DRAWN_SIG
-          append_summary_page(overwrite: self.has_summary, sig_image: sig_file)
+          append_summary_page(options.merge!(overwrite: self.has_summary, sig_image: sig_file))
         elsif sig_type == TYPED_SIG
-          append_summary_page(overwrite: self.has_summary, sig_text: data)
+          append_summary_page(options.merge!(overwrite: self.has_summary, sig_text: data))
         end
 
         self.update_attributes(has_summary: true)
@@ -225,6 +234,7 @@ module Signature
 
     # fill in the signature tag fields on the pdf with values
     # accepts options[:set_blank], which leaves the field empty with a white background
+    # accepts options[:blank_and_text], which blanks out the field and applies a white background
     def populate_tags(options = {})
       output = self.doc.path.gsub(/\.pdf/, '-tagged.pdf')
       input = self.doc.path
@@ -239,17 +249,18 @@ module Signature
             if tag_fields.present?
               tag_fields.each do |tag|
                 pdf.canvas do
-                  pdf.fill_color 'ffffff'
-                  pdf.fill_rectangle([tag.x, tag.y + tag.height + 3], tag.width, tag.height + 4)
-                  unless options && options[:set_blank]
+                  if options && (options[:set_blank] || options[:blank_and_text])
+                    pdf.fill_color 'ffffff'
+                    pdf.fill_rectangle([tag.x, tag.y + tag.height + 3], tag.width, tag.height + 4)
+                  end
+
+                  if tag.value && !(options && options[:set_blank])
                     pdf.fill_color '000000'
-                    if tag.value
-                      pdf.text_box(tag.value,
-                                   at: [tag.x, tag.y + tag.height],
-                                   height: tag.height,
-                                   size: tag.height.round,
-                                   valign: :center) if !tag.signature?
-                    end
+                    pdf.text_box(tag.value,
+                                 at: [tag.x, tag.y + tag.height],
+                                 height: tag.height,
+                                 size: tag.height.round,
+                                 valign: :center) if !tag.signature?
                   end
                 end
               end
@@ -325,11 +336,11 @@ module Signature
         pdf.text('Legal Simplicity Signature Authentication', size: 20, style: :bold, align: :center)
 
         pdf.bounding_box([0, pdf.bounds.top_left[1] - (20 + vspace1)], width: doc_width/2) do
-          pdf.text('Ryan Logue', align: :left)
+          pdf.text(options[:signed_fullname], align: :left)
           pdf.move_down(vspace2)
-          pdf.text('02/24/1840', align: :left)
+          pdf.text(Time.now.strftime('%m/%d/%Y'), align: :left)
           pdf.move_down(vspace2)
-          pdf.text('email@legal.co', align: :left)
+          pdf.text(options[:signed_email], align: :left)
         end
 
         pdf.bounding_box([doc_width/2, pdf.bounds.top_left[1] - (20 + vspace1)], width: doc_width/2) do
@@ -355,37 +366,41 @@ module Signature
 
         pdf.text('<b><u>Document Created (original upload)</b></u>', inline_format: true)
         pdf.move_down(vspace2)
-        pdf.text('Calvin Myers')
+        pdf.text(options[:created_fullname])
         pdf.move_down(vspace2)
-        pdf.text('calvinmyers401@gmail.com')
+        pdf.text(options[:created_email])
         pdf.move_down(vspace2)
-        pdf.text('IP Address: 168.34.33.33')
-        pdf.move_down(vspace2)
-        pdf.text('May 15, 2013, at 12:39 p.m.')
+        if options[:created_ip]
+          pdf.text('IP Address: ' + options[:created_ip])
+          pdf.move_down(vspace2)
+        end
+        pdf.text(options[:created_at].strftime('%b %d, %Y, at %T'))
 
         pdf.move_down(vspace1)
 
         pdf.text('<b><u>Document Viewed</b></u>', inline_format: true)
         pdf.move_down(vspace2)
-        pdf.text('Ryan Logue')
+        pdf.text(options[:viewed_fullname])
         pdf.move_down(vspace2)
-        pdf.text('ryan@legalsimplicity.co')
+        pdf.text(options[:viewed_email])
         pdf.move_down(vspace2)
-        pdf.text('IP Address: 100.200.300.45')
-        pdf.move_down(vspace2)
-        pdf.text('May 15, 2013, at 1:22 p.m.')
+        if options[:viewed_ip]
+          pdf.text('IP Address: ' + options[:viewed_ip])
+          pdf.move_down(vspace2)
+        end
+        pdf.text(options[:viewed_at].strftime('%b %d, %Y, at %T'))
 
         pdf.move_down(vspace1)
 
         pdf.text('<b><u>Document Signed</b></u>', inline_format: true)
         pdf.move_down(vspace2)
-        pdf.text('Ryan Logue')
+        pdf.text(options[:signed_fullname])
         pdf.move_down(vspace2)
-        pdf.text('ryan@legalsimplicity.co')
+        pdf.text(options[:signed_email])
         pdf.move_down(vspace2)
-        pdf.text(self.signed_ip)
+        pdf.text('IP Address: ' + self.signed_ip)
         pdf.move_down(vspace2)
-        pdf.text(self.signed_at.to_s)
+        pdf.text(self.signed_at.strftime('%b %d, %Y, at %T'))
 
       end
 

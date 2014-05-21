@@ -446,9 +446,16 @@ var PageView = function pageView(element, id, scale, navigateTo) {
             var viewerEl = document.getElementById('viewerContainer');
             newWidth = viewerEl.offsetWidth - SCROLLBAR_PADDING;
         }
+
         //change the size of the element and its child image
-        this.image.setAttribute('style', 'width:' + newWidth + 'px');
-        this.image.parentNode.setAttribute('style', 'width:' + newWidth + 'px');
+        if (newWidth) {
+            this.image.setAttribute('style', 'width:' + newWidth + 'px');
+            this.image.parentNode.setAttribute('style', 'width:' + newWidth + 'px');
+        } else {
+            this.image.setAttribute('style', 'width: 100%');
+            this.image.parentNode.setAttribute('style', 'width: 100%');
+        }
+
     };
 
     this.scrollIntoView = function pageViewScrollIntoVIew(dest) {
@@ -1165,6 +1172,15 @@ function webViewerLoad(evt) {
             });
     }
 
+    document.getElementById('outerViewerContainer').addEventListener('focus', function(){
+        console.log('focus');
+    });
+    document.getElementById('outerViewerContainer').addEventListener('onfocus', function(){
+        console.log('onfocus');
+    });
+    document.getElementById('outerViewerContainer').onfocus = function(){
+        console.log('direct onfocus');
+    };
     PDFView.load();
 }
 
