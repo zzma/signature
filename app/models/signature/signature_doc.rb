@@ -423,7 +423,7 @@ module Signature
     end
 
     def reprocess_document
-      if (self.doc_changed?)
+      if (self.doc_file_name_changed? || self.doc_file_size_changed? || self.doc_content_type_changed?)
         process_document
       end
     end
