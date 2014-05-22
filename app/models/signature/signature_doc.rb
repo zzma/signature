@@ -125,11 +125,18 @@ module Signature
       generate_document_images
     end
 
+    #unsign a document
+    def unsign_doc
+      self.update_attributes(signed_at: nil, signed_ip: nil, has_summary: nil)
+    end
+
     # method to be called when the signature document attachment is changed
     def reset_document
       #delete tag_fields and document_images
       self.tag_fields.each(&:destroy)
       self.document_images.each(&:destroy)
+
+      self.reload
 
       process_document
     end

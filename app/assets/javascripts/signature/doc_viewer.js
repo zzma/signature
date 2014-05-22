@@ -990,8 +990,15 @@ var SignatureTool = (function(){
 
             render: function FieldRender() {
                 var el = this.element;
+
                 var parentHeight = this.parent.offsetHeight,
                     parentWidth = this.parent.offsetWidth;
+
+                this.toConsole();
+                console.log({
+                    parentHeight: parentHeight,
+                    parentWidth: parentWidth
+                })
 
                 el.style.bottom = this.currentY + 'px';
                 el.style.left = this.currentX + 'px';
@@ -1172,15 +1179,6 @@ function webViewerLoad(evt) {
             });
     }
 
-    document.getElementById('outerViewerContainer').addEventListener('focus', function(){
-        console.log('focus');
-    });
-    document.getElementById('outerViewerContainer').addEventListener('onfocus', function(){
-        console.log('onfocus');
-    });
-    document.getElementById('outerViewerContainer').onfocus = function(){
-        console.log('direct onfocus');
-    };
     PDFView.load();
 }
 
