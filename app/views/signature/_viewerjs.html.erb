@@ -1,0 +1,644 @@
+<script type="text/javascript">
+    /**
+     * This is the document viewer for LegalSimplicity signature documents.
+     * It has the following dependencies:
+     *  - Backbone.js (>= 1.0)
+     *  - Underscore.js(>= 1.0)
+     *  - jQuery(>1.9 or so)
+     *
+     *  (c) 2014 Zane Ma, LegalSimplicity. Copies may not be viewed, shared, or distributed
+     *  without prior written consent.
+     */
+
+    //TODO: store calculated widths and positions in views
+    'use strict';
+
+    //A toggle variable to turn console.log on and off
+    var LOG = true;
+
+    if (!LOG && console) {
+        console.log = function(){};
+    }
+
+    (function(){
+        //TODO: write custom template function that changes to non-ERB, templates, and reverts to ERB
+        //change to non-ERB template delimiters
+        _.templateSettings = {
+            evaluate: /\{%(.+?)%\}/g,
+            interpolate: /\{%=(.+?)%\}/g,
+            escape: /\{%-(.+?)%\}/g
+        };
+
+        var DEFAULT_SCALE = 'auto',
+            DEFAULT_SCALE_DELTA = 1.1,
+            MIN_SCALE = 0.1,
+            MAX_SCALE = 4.0,
+            MAX_AUTO_SCALE = 3.0,
+            SCROLLBAR_PADDING = 40,
+            VERTICAL_PADDING = 5;
+
+        var SignatureTool = {};
+        SignatureTool.DocumentPage = Backbone.Model.extend({
+            defaults: {
+                imageUrl: null,
+                originalWidth: null,
+                originalHeight: null,
+                width: null,
+                height: null
+            },
+            initialize: function DocumentPageInitialize() {
+            }
+        });
+
+        SignatureTool.SignatureField = Backbone.Model.extend({
+            //TODO: combine x, y, width, height into one field
+            defaults: {
+//                position: {
+//                    x: null,
+//                    y: null,
+//                    width: null,
+//                    height: null
+//                },
+                tag_type: null,
+                page: null,
+                originalPosition: {
+                    x: null,
+                    y: null,
+                    width: null,
+                    height: null
+                }
+                //document reference / foreign key?
+            },
+            initialize: function SignatureFieldInitialize(options) {
+                if (options) {
+                    this.set('originalPosition', {
+                        x: options.x,
+                        y: options.y,
+                        width: options.width,
+                        height: options.height
+                    });
+                }
+
+            }
+        });
+
+        SignatureTool.SignatureFields = Backbone.Collection.extend({
+            model: SignatureTool.SignatureField,
+            initialize: function SignatureFieldsInitialize(options) {
+            }
+        });
+
+        SignatureTool.DocumentImage = Backbone.Model.extend({
+            defaults: function DocumentImageDefaults(){
+                return {
+                    originalWidth: 0
+                }
+            },
+            initialize: function DocumentImageInitialize(options){
+                if (options) {
+                    this.set('url', options);
+                }
+            },
+            setScale: function DocumentImageSetScale(scale){
+                if (scale >= MIN_SCALE && scale <= MAX_SCALE) {
+                    this.set('width', this.get('originalWidth') * scale);
+                } else {
+                    console.error("Invalid Document Image scale: " + scale);
+                }
+            }
+        });
+        SignatureTool.DocumentImages = Backbone.Collection.extend({
+            model: SignatureTool.DocumentImage
+        })
+
+        SignatureTool.Document = Backbone.Model.extend({
+            _currentPageNumber: 1,
+            _loadCount: 0,
+            defaults: {
+                images: new SignatureTool.DocumentImages,
+                tags: new SignatureTool.SignatureFields
+            },
+            initialize: function DocumentInitialize(options) {
+                if (options && options.images && options.tags) {
+                    this.set({
+                        images: new SignatureTool.DocumentImages(options.images),
+                        tags: new SignatureTool.SignatureFields(_.filter(options.tags, function(tag){ return tag.tag_type == 'signature'}))
+                    });
+                }
+
+                this.totalPages = this.get('images').length;
+
+                var self = this;
+                this.get('images').each(function(image){
+                    self.listenTo(image, 'change:originalWidth', self.updateLoad)
+                });
+            },
+            firstImageWidth: function DocumentFirstImageWidth(){
+                return this.get('images').at(0).get('originalWidth');
+            },
+            updateLoad: function DocumentUpdateLoad(model, value){
+                this.stopListening(model, 'change:originalWidth');
+                if (value > 0) this._loadCount += 1;
+                if (this.loaded()) this._loadCallback();
+            },
+            onload: function DocumentOnLoad(callback) {
+                this._loadCallback = callback;
+                if (this.loaded()) this._loadCallback();
+            },
+            loaded: function DocumentLoaded() {
+                return this._loadCount == this.totalPages;
+            },
+            get page(){
+                return this._currentPageNumber;
+            },
+            set page(val){
+                if (this.isValidPage(val)) {
+                    this._currentPageNumber = val;
+                }
+            },
+            isValidPage: function DocumentIsValidPage(val){
+                return val >= 1 && val <= this.totalPages;
+            }
+
+        });
+
+        SignatureTool.Documents = Backbone.Collection.extend({
+            model: SignatureTool.Document,
+            initialize: function DocumentsInitialize(models, options){
+                if (options && options.currentIndex >= 0) {
+                    this._currentIndex = options.currentIndex;
+                }
+                else {
+                    this._currentIndex = 0;
+                }
+            },
+            setScaleAll: function DocumentsSetScale(scale){
+                for (var i = 0, len = this.length; i < len; i++) {
+                    this._setScale(scale, i);
+                }
+            },
+            setScaleCurrent: function DocumentsSetScaleCurrent(scale){
+                return this._setScale(scale, this._currentIndex);
+            },
+            getCurrent: function DocumentsGetCurrent(){
+                return this.at(this._currentIndex);
+
+            },
+            getNext: function DocumentsGetNext(){
+                this._currentIndex = (this._currentIndex + 1 < this.length) ? (this._currentIndex + 1) : -1;
+                return this.at(this._currentIndex);
+            },
+            getPrevious: function DocumentsGetPrevious(){
+                this._currentIndex = (this._currentIndex - 1 >= 0) ? (this._currentIndex - 1) : -1;
+                return this.at(this._currentIndex);
+            },
+            _setScale: function Documents_SetScale(scale, index) {
+                var doc = this.at(index);
+
+                if (!doc) {
+                    console.error('Unable to find document!');
+                    return;
+                }
+
+                return doc.setScale(scale);
+            },
+            getCurrentIndex: function DocumentsGetIndex(){
+                return this._currentIndex;
+            }
+        });
+
+        SignatureTool.DocumentImageView = Backbone.View.extend({
+            tagName: 'div',
+            className: 'imageWrapper',
+            initialize: function DocumentImageViewInitialize(){
+                this.img = document.createElement('img');
+                this.img.setAttribute('src', this.model.get('url'));
+                this.$el.append(this.img);
+
+                //preload the image and set the original width
+                var img = new Image(), self = this;
+                img.onload = function(){
+                    self.model.set('originalWidth', this.width);
+                }
+                img.src = this.model.get('url');
+            },
+            render: function DocumentImageViewRender(scale){
+                scale = scale || 1
+                var width = this.model.get('originalWidth');
+
+                if (width) {
+                    this.$el.show();
+                    this.el.style.width = (width * scale) + 'px';
+                    this.img.style.width = (width * scale) + 'px';
+                } else {
+                    this.$el.hide();
+                }
+
+                return this;
+            }
+        });
+
+        //Accepts SignatureField as a model
+        SignatureTool.DocumentTagView = Backbone.View.extend({
+            tagName: 'div',
+            className: 'signatureField noSelect',
+            initialize: function DocumentTagViewInitialize(){
+                this.listenTo(this.model, 'change', this.render);
+            },
+            render: function DocumentTagViewRender(scale){
+                scale = scale || 1;
+
+                this.el.style.position = 'absolute';
+                this.el.style.bottom = (this.model.get('y') * scale) + 'px';
+                this.el.style.left = (this.model.get('x') * scale) + 'px';
+                this.el.style.height = (this.model.get('height') * scale) + 'px';
+                this.el.style.width = (this.model.get('width') * scale) + 'px';
+
+                return this;
+            }
+        });
+
+
+        SignatureTool.DocumentView = Backbone.View.extend({
+            tagName: 'div',
+            className: 'documentContainer',
+            docImageViews: [],
+            docTagViews: [],
+            initialize: function DocumentViewInitialize(options){
+                if (options && options.hidden) this.hidden = options.hidden;
+            },
+            render: function DocumentViewRender(){
+                var doc = this.model;
+
+                //iterate through each page
+                doc.get('images').each(function(image, index) {
+                    var pageContent = $(document.createElement('div')).addClass('page');
+
+                    //add the document image
+                    var docImage = new SignatureTool.DocumentImageView({model: image});
+                    pageContent.append(docImage.render().el);
+                    this.docImageViews.push(docImage);
+
+                    //add document tags
+                    var docTags = doc.get('tags').where({page: index + 1});
+                    _.each(docTags, function(tag){
+                        var docTag = new SignatureTool.DocumentTagView({model: tag});
+                        pageContent.append(docTag.render().el);
+                        this.docTagViews.push(docTag);
+                    }, this);
+
+                    this.$el.append(pageContent);
+                }, this);
+
+                if (this.hidden) this.$el.hide();
+
+                return this;
+            },
+            setScale: function DocumentViewSetScale(scale){
+                _.each(this.docImageViews, function(imageView){
+                    imageView.render(scale);
+                });
+                _.each(this.docTagViews, function (tagView){
+                    tagView.render(scale);
+                });
+            },
+            getPageElement: function DocumentViewGetPageElement(pageNum){
+                return this.$el.find('.page')[pageNum - 1];
+            }
+        });
+
+        SignatureTool.SignatureToolView = Backbone.View.extend({
+            el: $('#' + '<%= el_id %>'),
+            events: {
+                'click .previous': 'previousClick',
+                'click .next': 'nextClick',
+                'click .zoomIn': 'zoomInClick',
+                'click .zoomOut': 'zoomOutClick',
+                'click .pageNumber': 'clickHandler',
+                'click .download': 'downloadHandler',
+                'change .pageNumber': 'pageNumberChange',
+                'change .scaleSelect': 'scaleChange'
+            },
+            initialize: function SignatureToolViewInitialize(){
+                this.viewerView = new SignatureTool.ViewerView({el: this.$el.find('.viewerContainer'), collection: this.collection});
+                this.modalView = new SignatureTool.SignatureModalView({el: this.$el.find('.signatureModal')});
+            },
+            previousClick: function(evt){
+                SignatureTool.App.page--;
+            },
+            nextClick: function(evt){
+                SignatureTool.App.page++;
+            },
+            zoomInClick: function(evt){
+                SignatureTool.App.zoomIn();
+            },
+            zoomOutClick: function(evt){
+                SignatureTool.App.zoomOut();
+            },
+            scaleChange: function(evt){
+                SignatureTool.App.setScale(evt.target.value);
+            },
+            pageNumberChange: function(evt){
+                SignatureTool.App.page = evt.target.value;
+            },
+            clickHandler: function(evt){
+                console.log('click handler');
+            },
+            changeHandler: function(evt){
+                console.log('change handler');
+            },
+            getSigJSON: function SignatureToolViewGetSigJSON(){
+                return JSON.parse(this.$el.find('.sigData').attr('data-fields'));
+            },
+            getWidth: function SignatureToolViewGetWidth(){
+                return this.viewerView.$el.width();
+            },
+            selectScaleOption: function SignatureToolViewSelectScaleOption(value){
+                var options = this.$el.find('.scaleSelect')[0].options;
+                var predefinedValueFound = false;
+                for (var i = 0, ii = options.length; i < ii; i++) {
+                    var option = options[i];
+                    if (option.value != value) {
+                        option.selected = false;
+                        continue;
+                    }
+                    option.selected = true;
+                    predefinedValueFound = true;
+                }
+
+                var customScaleOption = this.$el.find('.customScaleOption')[0];
+                customScaleOption.selected = false;
+
+                if (!predefinedValueFound) {
+                    customScaleOption.textContent = Math.round(parseFloat(value) * 10000) / 100 + '%';
+                    customScaleOption.value = true;
+                    customScaleOption.selected = true;
+                }
+
+                return predefinedValueFound;
+            },
+            setPage: function SignatureToolViewSetPage(pageNum, isMin, isMax){
+                this.$el.find('.pageNumber')[0].value = pageNum;
+                this.$el.find('.previous')[0].disabled = isMin;
+                this.$el.find('.next')[0].disabled = isMax;
+            },
+            setPageTotal: function SignatureToolViewSetPageTotal(val){
+                this.$el.find('.numPages')[0].innerHTML = 'of ' + val;
+            }
+        });
+
+        /**
+         * Requires el to be set on view creation
+         */
+        SignatureTool.ViewerView = Backbone.View.extend({
+            docViews: [],
+            events: {
+
+            },
+            initialize: function ViewerViewInitialize(){
+                this.listenTo(this.collection, 'add', this.addDocument);
+            },
+            addDocument: function ViewerViewAddDocument(doc){
+                var view = (this.collection.length > 1 ? new SignatureTool.DocumentView({model: doc, hidden: true}) : new SignatureTool.DocumentView({model: doc}));
+                this.$el.append(view.render().el);
+                this.docViews.push(view);
+            }
+        });
+
+        /**
+         * Requires el to be set on view creation
+         */
+        SignatureTool.SignatureModalView = Backbone.View.extend({
+            template: '',
+            events: {
+
+            },
+            initialize: function SignatureModalViewInitialize(){
+            }
+        });
+
+        //GLOBALLY ACCESSIBLE HELPER FUNCTIONS
+        SignatureTool.scrollIntoView = function ScrollIntoView(element, spot, animate) {
+            // Assuming offsetParent is available (it's not available when viewer is in
+            // hidden iframe or object).
+            var parent = element.offsetParent;
+            var offsetY = element.offsetTop + element.clientTop;
+            var offsetX = element.offsetLeft + element.clientLeft;
+            if (!parent) {
+                console.error('offsetParent is not set -- cannot scroll');
+                return;
+            }
+            while (parent.clientHeight === parent.scrollHeight) {
+                if (parent.dataset._scaleY) {
+                    offsetY /= parent.dataset._scaleY;
+                    offsetX /= parent.dataset._scaleX;
+                }
+                offsetY += parent.offsetTop;
+                offsetX += parent.offsetLeft;
+                parent = parent.offsetParent;
+                if (!parent) {
+                    return; // no need to scroll
+                }
+            }
+            if (spot) {
+                if (spot.top !== undefined) {
+                    offsetY += spot.top;
+                }
+                if (spot.left !== undefined) {
+                    offsetX += spot.left;
+                    parent.scrollLeft = offsetX;
+                }
+            }
+
+            var SCROLL_TOP_PADDING = 10;
+            if (animate) {
+                $(parent).animate({scrollTop: offsetY - SCROLL_TOP_PADDING}, 500);
+            } else {
+                parent.scrollTop = offsetY - SCROLL_TOP_PADDING;
+            }
+        }
+
+        SignatureTool.MainController = function(){
+            var controller = {
+                currentScale: null,
+                currentScaleValue: null,
+                initialize: function MainControllerInitialize(){
+                    console.log('DOM-loaded: Initializing Main Controller.');
+                    this.docs = new SignatureTool.Documents(null, {currentIndex: 0});
+                    this.viewer = new SignatureTool.SignatureToolView({collection: this.docs});
+
+                    //find and read the required document / tag field data
+                    this.docs.add(this.viewer.getSigJSON());
+
+                    //wait until the document images have been loaded
+                    var self = this;
+                    this.docs.getCurrent().onload(function(){
+                        //set the initial scale
+                        self.setScale(DEFAULT_SCALE);
+                        //initialize paging
+                        self.initializePages();
+                    });
+                },
+                setScale: function MainControllerSetScale(scale, docIndex){
+                    docIndex = docIndex || 0;
+
+                    var value = parseFloat(scale);
+                    var doc = this.docs.at(docIndex);
+
+                    if (isNaN(value)) {
+                        var firstPageWidth = doc.firstImageWidth();
+                        var pageWidthScale = (this.viewer.getWidth() - SCROLLBAR_PADDING) / firstPageWidth;
+
+                        switch (scale) {
+                            case 'auto':
+                                value = Math.min(MAX_AUTO_SCALE, pageWidthScale);
+                                break;
+                            default:
+                                console.error('Invalid zoom value: ' + value);
+                                return;
+                        }
+                    }
+
+                    this.currentScale = scale;
+                    this.currentScaleValue = value;
+
+                    value = value.toFixed(2);
+
+                    this._docView(docIndex).setScale(value);
+                    this.viewer.selectScaleOption(scale);
+                },
+                zoomIn: function MainControllerZoomIn(ticks){
+                    var newScale = this.currentScaleValue;
+                    do {
+                        newScale = (newScale * DEFAULT_SCALE_DELTA).toFixed(2);
+                        newScale = Math.ceil(newScale * 10) / 10;
+                        newScale = Math.min(MAX_SCALE, newScale);
+                    } while (--ticks && newScale > MAX_SCALE);
+                    this.setScale(newScale);
+                },
+                zoomOut: function MainControllerZoomOut(ticks){
+                    var newScale = this.currentScaleValue;
+                    do {
+                        newScale = (newScale / DEFAULT_SCALE_DELTA).toFixed(2);
+                        newScale = Math.floor(newScale * 10) / 10;
+                        newScale = Math.max(MIN_SCALE, newScale);
+                    } while (--ticks && newScale < MIN_SCALE);
+                    this.setScale(newScale);
+                },
+                get page(){
+                    return this.docs.getCurrent().page;
+                },
+                set page(val){
+                    if (this.docs.getCurrent().isValidPage(val)) {
+                        //change the page number
+                        this.docs.getCurrent().page = val;
+
+                        //change the input page number
+                        this.viewer.setPage(val, val <= 1, val >= this.docs.getCurrent().totalPages);
+
+                        if (!this.currentlyScrolling) {
+                            //scroll the page into view
+                            var pageEl = this._docView(this.docs.getCurrentIndex()).getPageElement(val);
+                            SignatureTool.scrollIntoView(pageEl, null, false);
+                        }
+                    }
+                },
+                initializePages: function MainControllerInitializePages(){
+                    this.page = 1;
+                    this.viewer.setPageTotal(this.docs.getCurrent().totalPages);
+                    var self = this;
+                    this.viewer.viewerView.el.addEventListener('scroll', function viewerScroll(evt){
+                        var visible = self.getVisiblePages(evt.target, true);
+                        var visiblePages = visible.views;
+                        console.log("# visible pages: " + visiblePages.length);
+                        if (visiblePages.length === 0) {
+                            return;
+                        }
+
+                        var currentPage = self.page, stillFullyVisible;
+
+                        for (var i = 0, len = visiblePages.length, stillFullyVisible = false; i < len; i++) {
+                            var page = visiblePages[i];
+
+                            if (page.percent < 100) {
+                                break;
+                            }
+                            if (page.pageNum === self.page) {
+                                stillFullyVisible = true;
+                                break;
+                            }
+                        }
+
+                        if (!stillFullyVisible) {
+                            currentPage = visiblePages[0].pageNum;
+                        }
+
+                        self.currentlyScrolling = true;
+                        self.page = currentPage;
+                        self.currentlyScrolling = false;
+                    });
+                },
+                getVisiblePages: function MainControllerGetVisiblePages(scrollEl, sortByVisibility){
+                    var top = scrollEl.scrollTop, bottom = top + scrollEl.clientHeight,
+                        left = scrollEl.scrollLeft, right = left + scrollEl.clientWidth;
+
+                    var views = this.viewer.viewerView.docViews[this.docs.getCurrentIndex()].docImageViews;
+                    var visible = [], view;
+                    var currentHeight, viewHeight, hiddenHeight, percentHeight, currentWidth, viewWidth;
+
+                    for (var i = 0, len = views.length; i < len; i++) {
+                        view = views[i];
+                        currentHeight = view.el.offsetTop + view.el.clientTop;
+                        viewHeight = view.el.clientHeight;
+
+                        if ((currentHeight + viewHeight) < top) {
+                            continue;
+                        }
+                        if (currentHeight > bottom) {
+                            break;
+                        }
+
+                        currentWidth = view.el.offsetLeft + view.el.clientLeft;
+                        viewWidth = view.el.clientWidth;
+                        if ((currentWidth + viewWidth) < left || currentWidth > right) {
+                            continue;
+                        }
+
+                        hiddenHeight = Math.max(0, top - currentHeight) +
+                                Math.max(0, currentHeight + viewHeight - bottom);
+                        percentHeight = ((viewHeight - hiddenHeight) * 100 / viewHeight) | 0;
+
+                        visible.push({ pageNum: i + 1, x: currentWidth, y: currentHeight,
+                            view: view, percent: percentHeight });
+                    }
+
+                    var first = visible[0];
+                    var last = visible[visible.length - 1];
+
+                    if (sortByVisibility) {
+                        visible.sort(function(a, b) {
+                            var pc = a.percent - b.percent;
+                            if (Math.abs(pc) > 0.001) {
+                                return -pc;
+                            }
+                            return a.id - b.id; // ensure stability
+                        });
+                    }
+                    return {first: first, last: last, views: visible};
+                },
+                _docView: function MainController_DocView(index){
+                    return this.viewer.viewerView.docViews[index];
+                }
+            }
+
+            controller.initialize();
+            return controller;
+        }
+
+
+        $(function(){
+            SignatureTool.App = new SignatureTool.MainController();
+        });
+
+    })();
+</script>

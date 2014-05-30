@@ -1,0 +1,123 @@
+<%= stylesheet_link_tag "signature_new", :media => "all" %>
+
+
+<div class="outerViewerContainer" id="<%= 'sigDoc' + documents.first.id.to_s %>" data-signature="<%= !view_only %>">
+  <div class="mainViewerContainer">
+    <div class="toolbar">
+      <div class="toolbarContainer">
+        <div class="toolbarViewer">
+          <div class="toolbarViewerLeft">
+            <div class="splitToolbarButton">
+              <button class="toolbarButton pageUp previous" title="Previous page">
+                <span>Previous page</span>
+              </button>
+              <div class="splitToolbarButtonSeparator"></div>
+              <button class="toolbarButton pageDown next" title="Next page">
+                <span>Next page</span>
+              </button>
+            </div>
+            <label class="toolbarLabel desktop-only-inline pageNumberLabel">Page:</label>
+            <input class="toolbarField pageNumber" type="number" title="Page number"/>
+            <span class="toolbarLabel numPages">of X</span>
+            <button href="#" class="toolbarButton download" title="Download document"> Download </button>
+          </div>
+          <div class="toolbarViewerRight">
+            <div class="splitToolbarButton">
+              <button class="toolbarButton zoomOut" title="Zoom Out">
+                <span>Zoom Out</span>
+              </button>
+              <div class="splitToolbarButtonSeparator"></div>
+              <button class="toolbarButton zoomIn" title="Zoom In">
+                <span>Zoom In</span>
+              </button>
+            </div>
+            <span class="dropdownToolbarButton desktop-only-inline scaleSelectContainer">
+              <select title="Zoom" class="scaleSelect">
+                <option value="auto" selected>Auto</option>
+                <option class="customScaleOption" value="custom"></option>
+                <option value="0.5">50%</option>
+                <option value="0.75">75%</option>
+                <option value="1">100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+              </select>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="viewerContainer">
+
+    </div>
+    <div class="sigFooter <%= view_only ? 'sigHidden' : ''%>">
+      <div class="sigFooterContainer">
+        <div class="sigFooterContainerLeft">
+          <button class="nextSignature">Next Signature</button>
+        </div>
+        <div class="sigFooterContainerRight">
+          <button class="finishSigning inactive">Next Document</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="signatureModal noSelect sigHidden">
+    <div class="modalContainer">
+      <div class="modalTabbar">
+        <div class="typeSignatureForm">
+          <div class="typeField">
+            <label> Type Your Name Below </label>
+            <input type="text" class="nameInput" placeholder="Your Name (e.g. John Hancock)" maxlength="30" />
+          </div>
+        </div>
+        <ul class="modalTabs">
+          <li class="active drawSignatureTab">Draw Your Signature</li>
+          OR
+          <li class="typeSignatureTab">Type Your Signature</li>
+        </ul>
+      </div>
+
+      <div class="modalContent">
+        <div class="signaturePad"></div>
+        <div class="sigHidden signatureTypeWrapper">
+          <div class="signatureType"></div>
+        </div>
+        <hr class="typeUnderline">
+      </div>
+
+      <div class="modalFooter">
+        <div class="modalFooterLeft">
+          <label>
+            <input type="checkbox" class="agreeSignature"/>
+            &nbsp;
+            I agree to the <a href="/signature/terms" target="_blank" class="esignTerms">electronic signature terms & conditions.</a>
+          </label>
+        </div>
+        <div class="modalFooterRight">
+          <button class="signSignature" class="inactive">Apply <span class="desktop-only-inline">Signature</span></button>
+        </div>
+      </div>
+      <button class="cancelSignature">×</button>
+
+    </div>
+  </div>
+
+
+  <% if !view_only %>
+      <%= form_tag(submit_path, method: :post, class: 'sig_form') do %>
+          <input type="hidden" name="sig_type" class="sig_type"/>
+          <input type="hidden" name="sig_data" class="sig_data"/>
+      <% end %>
+  <% end %>
+
+  <%= content_tag "div", class: "sigHidden sigData", data: {fields: documents.map(&:client_attributes)} do %>
+
+  <% end %>
+</div>
+
+
+<%= javascript_include_tag 'signature/jquery-min.js' %>
+<%= javascript_include_tag 'signature/underscore-min.js' %>
+<%= javascript_include_tag 'signature/backbone-min.js' %>
+
+<%= render 'signature/viewerjs', el_id: 'sigDoc' + documents.first.id.to_s %>

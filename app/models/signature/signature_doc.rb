@@ -67,6 +67,15 @@ module Signature
 
     end
 
+    # Attributes that are used on the client by the signature document viewer
+    def client_attributes
+      return {
+          id: self.id,
+          images: self.document_images.map(&:image).map(&:url),
+          tags: self.tag_fields.map(&:scaled_attributes)
+      }
+    end
+
     # Apply existing tags to the signature document
     # Accepts a hash of new tags {tag_name1: value1, tag_name2: value2, ...}
     def apply_tags(tags=nil)
