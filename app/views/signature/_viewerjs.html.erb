@@ -304,6 +304,9 @@
             },
             getPageElement: function DocumentViewGetPageElement(pageNum){
                 return this.$el.find('.page')[pageNum - 1];
+            },
+            allPageElements: function DocumentViewAllPageElements(){
+                return this.$el.find('.page');
             }
         });
 
@@ -356,7 +359,7 @@
             selectScaleOption: function SignatureToolViewSelectScaleOption(value){
                 var options = this.$el.find('.scaleSelect')[0].options;
                 var predefinedValueFound = false;
-                for (var i = 0, ii = options.length; i < ii; i++) {
+                for (var i = 0, len = options.length; i < len; i++) {
                     var option = options[i];
                     if (option.value != value) {
                         option.selected = false;
@@ -550,7 +553,6 @@
                     this.viewer.viewerView.el.addEventListener('scroll', function viewerScroll(evt){
                         var visible = self.getVisiblePages(evt.target, true);
                         var visiblePages = visible.views;
-                        console.log("# visible pages: " + visiblePages.length);
                         if (visiblePages.length === 0) {
                             return;
                         }
@@ -579,31 +581,29 @@
                     });
                 },
                 getVisiblePages: function MainControllerGetVisiblePages(scrollEl, sortByVisibility){
-                    var top = scrollEl.scrollTop, bottom = top + scrollEl.clientHeight,
-                        left = scrollEl.scrollLeft, right = left + scrollEl.clientWidth;
+                    var top = scrollEl.scrollTop, bottom = top + scrollEl.clientHeight;
+                    var left = scrollEl.scrollLeft, right = left + scrollEl.clientWidth;
 
-                    var views = this.viewer.viewerView.docViews[this.docs.getCurrentIndex()].docImageViews;
                     var visible = [], view;
-                    var currentHeight, viewHeight, hiddenHeight, percentHeight, currentWidth, viewWidth;
+                    var currentHeight, viewHeight, hiddenHeight, percentHeight;
+                    var currentWidth, viewWidth;
+                    var views = this.viewer.viewerView.docViews[this.docs.getCurrentIndex()].allPageElements();
 
-                    for (var i = 0, len = views.length; i < len; i++) {
+                    for (var i = 0, len = views.length; i < len; ++i) {
                         view = views[i];
-                        currentHeight = view.el.offsetTop + view.el.clientTop;
-                        viewHeight = view.el.clientHeight;
-
+                        currentHeight = view.offsetTop + view.clientTop;
+                        viewHeight = view.clientHeight;
                         if ((currentHeight + viewHeight) < top) {
                             continue;
                         }
                         if (currentHeight > bottom) {
                             break;
                         }
-
-                        currentWidth = view.el.offsetLeft + view.el.clientLeft;
-                        viewWidth = view.el.clientWidth;
+                        currentWidth = view.offsetLeft + view.clientLeft;
+                        viewWidth = view.clientWidth;
                         if ((currentWidth + viewWidth) < left || currentWidth > right) {
                             continue;
                         }
-
                         hiddenHeight = Math.max(0, top - currentHeight) +
                                 Math.max(0, currentHeight + viewHeight - bottom);
                         percentHeight = ((viewHeight - hiddenHeight) * 100 / viewHeight) | 0;
