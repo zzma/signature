@@ -51,14 +51,7 @@
         });
 
         SignatureTool.SignatureField = Backbone.Model.extend({
-            //TODO: combine x, y, width, height into one field
             defaults: {
-//                position: {
-//                    x: null,
-//                    y: null,
-//                    width: null,
-//                    height: null
-//                },
                 tag_type: null,
                 page: null,
                 originalPosition: {
@@ -114,6 +107,8 @@
         SignatureTool.Document = Backbone.Model.extend({
             _currentPageNumber: 1,
             _loadCount: 0,
+            _nextSignature: null,
+            totalPages: 0,
             defaults: {
                 images: new SignatureTool.DocumentImages,
                 tags: new SignatureTool.SignatureFields
@@ -122,9 +117,31 @@
                 if (options && options.images && options.tags) {
                     this.set({
                         images: new SignatureTool.DocumentImages(options.images),
-                        tags: new SignatureTool.SignatureFields(_.filter(options.tags, function(tag){ return tag.tag_type == 'signature'}))
+                        tags: new SignatureTool.SignatureFields(_.filter(options.tags, function(tag){ return tag.tag_type == 'signature'}),
+                                {comparator: function(a, b){
+                                    var pageA = a.get('page'),
+                                        pageB = b.get('page'),
+                                            yA = a.get('originalPosition').y,
+                                            yB = b.get('originalPosition').y,
+                                            xA = a.get('originalPosition').x,
+                                            xB = b.get('originalPosition').x
+
+                                    if (pageA > pageB) return 1;
+                                    if (pageA < pageB) return -1;
+                                    if (yA > yB) return 1;
+                                    if (yA < yB) return -1;
+                                    if (xA > xB) return 1;
+                                    if (xA < xB) return -1;
+
+                                    return 0;
+                                }})
                     });
                 }
+
+                //set the next signature to the first signature
+                var tags = this.get('tags');
+                if (tags.length > 0) this._nextSignature = 0;
+                else this._nextSignature = -1;
 
                 this.totalPages = this.get('images').length;
 
@@ -317,10 +334,11 @@
                 'click .next': 'nextClick',
                 'click .zoomIn': 'zoomInClick',
                 'click .zoomOut': 'zoomOutClick',
-                'click .pageNumber': 'clickHandler',
+                'click .pageNumber': 'pageNumberClick',
                 'click .download': 'downloadHandler',
                 'change .pageNumber': 'pageNumberChange',
-                'change .scaleSelect': 'scaleChange'
+                'change .scaleSelect': 'scaleChange',
+                'click .nextSignature': 'nextSignatureClick'
             },
             initialize: function SignatureToolViewInitialize(){
                 this.viewerView = new SignatureTool.ViewerView({el: this.$el.find('.viewerContainer'), collection: this.collection});
@@ -344,11 +362,11 @@
             pageNumberChange: function(evt){
                 SignatureTool.App.page = evt.target.value;
             },
-            clickHandler: function(evt){
-                console.log('click handler');
+            nextSignatureClick: function(evt){
+                SignatureTool.App.scrollToNext();
             },
-            changeHandler: function(evt){
-                console.log('change handler');
+            pageNumberClick: function(evt){
+                evt.target.select();
             },
             getSigJSON: function SignatureToolViewGetSigJSON(){
                 return JSON.parse(this.$el.find('.sigData').attr('data-fields'));
@@ -545,6 +563,9 @@
                             SignatureTool.scrollIntoView(pageEl, null, false);
                         }
                     }
+                },
+                scrollToNext: function MainControllerScrollToNext(){
+
                 },
                 initializePages: function MainControllerInitializePages(){
                     this.page = 1;
