@@ -382,8 +382,10 @@ module Signature
         pdf.text('Document History', size: 16, style: :bold, align: :center)
         pdf.move_down(vspace2)
         pdf.text(self.doc_file_name)
-        pdf.move_down(vspace2)
-        pdf.text('Transaction ID [generate random number for each signature]')
+        if options[:document_id]
+          pdf.move_down(vspace2)
+          pdf.text('Transaction ID: ' + options[:document_id])
+        end
 
         pdf.move_down(vspace1)
 
@@ -403,20 +405,20 @@ module Signature
 
         if options[:viewed_fullname] || options[:viewed_email] || options[:viewed_ip] || options[:viewed_at]
           pdf.text('<b><u>Document Viewed</b></u>', inline_format: true)
-          pdf.move_down(vspace2)
           if options[:viewed_fullname]
-            pdf.text(options[:viewed_fullname])
             pdf.move_down(vspace2)
+            pdf.text(options[:viewed_fullname])
           end
           if options[:viewed_email]
-            pdf.text(options[:viewed_email])
             pdf.move_down(vspace2)
+            pdf.text(options[:viewed_email])
           end
           if options[:viewed_ip]
-            pdf.text('IP Address: ' + options[:viewed_ip])
             pdf.move_down(vspace2)
+            pdf.text('IP Address: ' + options[:viewed_ip])
           end
           if options[:viewed_at]
+            pdf.move_down(vspace2)
             pdf.text(options[:viewed_at].strftime('%b %d, %Y, at %T'))
           end
 
