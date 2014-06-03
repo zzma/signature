@@ -401,19 +401,27 @@ module Signature
 
         pdf.move_down(vspace1)
 
-        pdf.text('<b><u>Document Viewed</b></u>', inline_format: true)
-        pdf.move_down(vspace2)
-        pdf.text(options[:viewed_fullname])
-        pdf.move_down(vspace2)
-        pdf.text(options[:viewed_email])
-        pdf.move_down(vspace2)
-        if options[:viewed_ip]
-          pdf.text('IP Address: ' + options[:viewed_ip])
+        if options[:viewed_fullname] || options[:viewed_email] || options[:viewed_ip] || options[:viewed_at]
+          pdf.text('<b><u>Document Viewed</b></u>', inline_format: true)
           pdf.move_down(vspace2)
-        end
-        pdf.text(options[:viewed_at].strftime('%b %d, %Y, at %T'))
+          if options[:viewed_fullname]
+            pdf.text(options[:viewed_fullname])
+            pdf.move_down(vspace2)
+          end
+          if options[:viewed_email]
+            pdf.text(options[:viewed_email])
+            pdf.move_down(vspace2)
+          end
+          if options[:viewed_ip]
+            pdf.text('IP Address: ' + options[:viewed_ip])
+            pdf.move_down(vspace2)
+          end
+          if options[:viewed_at]
+            pdf.text(options[:viewed_at].strftime('%b %d, %Y, at %T'))
+          end
 
-        pdf.move_down(vspace1)
+          pdf.move_down(vspace1)
+        end
 
         pdf.text('<b><u>Document Signed</b></u>', inline_format: true)
         pdf.move_down(vspace2)
