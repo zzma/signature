@@ -384,7 +384,7 @@ module Signature
         pdf.text(self.doc_file_name)
         if options[:document_id]
           pdf.move_down(vspace2)
-          pdf.text('Transaction ID: ' + options[:document_id])
+          pdf.text('Transaction ID: ' + options[:document_id].to_s)
         end
 
         pdf.move_down(vspace1)
