@@ -29,6 +29,7 @@ module Signature
     def scaled_attributes
       height_adjust = (self.tag_type == TAG_TYPES[:signature]) ? 8 : 0
       return {
+          id: self.id,
           x: self.x * RES_SCALE,
           y: self.y * RES_SCALE,
           height: (self.height + height_adjust) * RES_SCALE,

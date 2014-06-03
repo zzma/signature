@@ -71,6 +71,7 @@ module Signature
     def client_attributes
       return {
           id: self.id,
+          download_url: self.doc.url,
           images: self.document_images.map(&:image).map(&:url),
           tags: self.tag_fields.map(&:scaled_attributes)
       }

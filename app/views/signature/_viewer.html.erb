@@ -1,4 +1,4 @@
-<%= stylesheet_link_tag "signature_new", :media => "all" %>
+<%= stylesheet_link_tag "signature", :media => "all" %>
 
 
 <div class="outerViewerContainer" id="<%= 'sigDoc' + documents.first.id.to_s %>" data-signature="<%= !view_only %>">
@@ -56,12 +56,12 @@
           <button class="nextSignature">Next Signature</button>
         </div>
         <div class="sigFooterContainerRight">
-          <button class="finishSigning inactive">Next Document</button>
+          <button class="finishSigning inactive"></button>
         </div>
       </div>
     </div>
   </div>
-  <div class="signatureModal noSelect sigHidden">
+  <div class="signatureModal noSelect">
     <div class="modalContainer">
       <div class="modalTabbar">
         <div class="typeSignatureForm">
@@ -119,5 +119,7 @@
 <%= javascript_include_tag 'signature/jquery-min.js' %>
 <%= javascript_include_tag 'signature/underscore-min.js' %>
 <%= javascript_include_tag 'signature/backbone-min.js' %>
+<%= javascript_include_tag 'signature/jSignature.js' %>
+
 
 <%= render 'signature/viewerjs', el_id: 'sigDoc' + documents.first.id.to_s %>

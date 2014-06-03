@@ -21,7 +21,7 @@
     }
 
     (function(){
-        //TODO: write custom template function that changes to non-ERB, templates, and reverts to ERB
+        //TODO: write custom template function that changes non-ERB to ERB, templates, and returns HTML so that anyone else using underscore is unaffected
         //change to non-ERB template delimiters
         _.templateSettings = {
             evaluate: /\{%(.+?)%\}/g,
@@ -35,7 +35,33 @@
             MAX_SCALE = 4.0,
             MAX_AUTO_SCALE = 3.0,
             SCROLLBAR_PADDING = 40,
-            VERTICAL_PADDING = 5;
+            DRAWN_SIG = 'sig',
+            TYPED_SIG = 'text',
+            VERTICAL_PADDING = 5,
+            viewOnly;
+
+        var isValidUrl =  function IsValidUrl(url, allowRelative){
+            if (!url) {
+                return false;
+            }
+            // RFC 3986 (http://tools.ietf.org/html/rfc3986#section-3.1)
+            // scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+            var protocol = /^[a-z][a-z0-9+\-.]*(?=:)/i.exec(url);
+            if (!protocol) {
+                return allowRelative;
+            }
+            protocol = protocol[0].toLowerCase();
+            switch (protocol) {
+                case 'http':
+                case 'https':
+                case 'ftp':
+                case 'mailto':
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
 
         var SignatureTool = {};
         SignatureTool.DocumentPage = Backbone.Model.extend({
@@ -107,24 +133,30 @@
         SignatureTool.Document = Backbone.Model.extend({
             _currentPageNumber: 1,
             _loadCount: 0,
-            _nextSignature: null,
             totalPages: 0,
+            _nextSignature: null,
             defaults: {
+                id: null,
+                download_url: null,
                 images: new SignatureTool.DocumentImages,
                 tags: new SignatureTool.SignatureFields
             },
             initialize: function DocumentInitialize(options) {
                 if (options && options.images && options.tags) {
+                    var tags;
+                    if (!viewOnly) {
+                        tags = _.filter(options.tags, function(tag){ return tag.tag_type == 'signature'});
+                    }
                     this.set({
                         images: new SignatureTool.DocumentImages(options.images),
-                        tags: new SignatureTool.SignatureFields(_.filter(options.tags, function(tag){ return tag.tag_type == 'signature'}),
+                        tags: new SignatureTool.SignatureFields(tags,
                                 {comparator: function(a, b){
                                     var pageA = a.get('page'),
                                         pageB = b.get('page'),
-                                            yA = a.get('originalPosition').y,
-                                            yB = b.get('originalPosition').y,
-                                            xA = a.get('originalPosition').x,
-                                            xB = b.get('originalPosition').x
+                                        yA = a.get('originalPosition').y,
+                                        yB = b.get('originalPosition').y,
+                                        xA = a.get('originalPosition').x,
+                                        xB = b.get('originalPosition').x
 
                                     if (pageA > pageB) return 1;
                                     if (pageA < pageB) return -1;
@@ -136,12 +168,10 @@
                                     return 0;
                                 }})
                     });
-                }
 
-                //set the next signature to the first signature
-                var tags = this.get('tags');
-                if (tags.length > 0) this._nextSignature = 0;
-                else this._nextSignature = -1;
+                    if (options.tags.length > 0) this._nextSignature = 0;
+                    else this._nextSignature = -1;
+                }
 
                 this.totalPages = this.get('images').length;
 
@@ -156,7 +186,7 @@
             updateLoad: function DocumentUpdateLoad(model, value){
                 this.stopListening(model, 'change:originalWidth');
                 if (value > 0) this._loadCount += 1;
-                if (this.loaded()) this._loadCallback();
+                if (this.loaded() && this._loadCallback) this._loadCallback();
             },
             onload: function DocumentOnLoad(callback) {
                 this._loadCallback = callback;
@@ -175,6 +205,20 @@
             },
             isValidPage: function DocumentIsValidPage(val){
                 return val >= 1 && val <= this.totalPages;
+            },
+            // returns false if no next signature, otherwise returns true and fires a
+            // 'scroll' event to the signature tag model
+            scrollNextSignature: function DocumentScrollNextSignature(){
+                if (this._nextSignature < 0) return false;
+
+                this.get('tags').at(this._nextSignature).trigger('scroll');
+
+                return true;
+            },
+            getNextSignature: function DocumentGetNextSignature(){
+                var tagsLength = this.get('tags').length;
+                this._nextSignature = (this._nextSignature < tagsLength - 1) ? this._nextSignature + 1 : -1;
+                return this._nextSignature;
             }
 
         });
@@ -201,8 +245,14 @@
                 return this.at(this._currentIndex);
 
             },
+            hasNext: function DocumentsHasNext(){
+                return this._currentIndex < (this.length - 1);
+            },
             getNext: function DocumentsGetNext(){
                 this._currentIndex = (this._currentIndex + 1 < this.length) ? (this._currentIndex + 1) : -1;
+                if (this._currentIndex != -1) {
+                    this.trigger('switch', this._currentIndex); //switch the currently viewed document
+                }
                 return this.at(this._currentIndex);
             },
             getPrevious: function DocumentsGetPrevious(){
@@ -231,6 +281,7 @@
                 this.img = document.createElement('img');
                 this.img.setAttribute('src', this.model.get('url'));
                 this.$el.append(this.img);
+                this.listenToOnce(this.model, 'change:originalWidth', this.render);
 
                 //preload the image and set the original width
                 var img = new Image(), self = this;
@@ -258,9 +309,17 @@
         //Accepts SignatureField as a model
         SignatureTool.DocumentTagView = Backbone.View.extend({
             tagName: 'div',
-            className: 'signatureField noSelect',
+            className: 'signatureField noSelect unsigned',
             initialize: function DocumentTagViewInitialize(){
                 this.listenTo(this.model, 'change', this.render);
+                this.listenTo(this.model, 'scroll', this.scrollTo);
+
+                //manually added click handler
+                this.$el.on('click', $.proxy(this.onClick, this));
+                //remove click handler once the field has been signed
+                this.listenToOnce(this.model, 'change:signature', function(){
+                    this.$el.off('click', this.onClick);
+                });
             },
             render: function DocumentTagViewRender(scale){
                 scale = scale || 1;
@@ -271,7 +330,54 @@
                 this.el.style.height = (this.model.get('height') * scale) + 'px';
                 this.el.style.width = (this.model.get('width') * scale) + 'px';
 
+                //see if a signature exists
+                if (this.model.hasChanged('signature')) {
+                    this.$el.removeClass('unsigned');
+
+                    var sigType = this.model.get('signature').type,
+                        sigData = this.model.get('signature').data;
+
+                    while (this.el.firstChild){
+                        this.el.removeChild(this.el.firstChild);
+                    }
+
+                    if (sigType == DRAWN_SIG){
+                        var i = new Image();
+                        i.src = 'data:' + sigData[0] + ';base64,' + btoa(sigData[1]);
+                        i.style.height = '100%';
+
+                        this.el.appendChild(i);
+                    } else if (sigType == TYPED_SIG){
+                        var d = document.createElement('div');
+                        d.innerHTML = sigData;
+                        d.setAttribute('style', "font-family: 'tangerine', 'cursive' !important");
+                        d.style.fontSize = Math.min(this.el.offsetHeight - 2, (this.el.offsetWidth/sigData.length)) + 'px';
+                        d.style.lineHeight = this.el.offsetHeight + 'px';
+
+                        this.el.appendChild(d);
+                    }
+                }
+
                 return this;
+            },
+            scrollTo: function DocumentTagViewScrollTo(){
+                SignatureTool.scrollIntoView(this.el, {animate: true,
+                    callback: function(){
+                        //TODO: implement a field flashing callback
+                    }});
+            },
+            clickHandler: function DocumentTagViewOnClick(handler){
+                this._clickHandler = handler;
+            },
+            onClick: function DocumentTagViewClickHandler(){
+                //TODO: is this necessary?
+                if (this._clickHandler) { this._clickHandler(); }
+
+                SignatureTool.App.showModal(this.model.get('id'));
+            },
+            remove: function DocumentTagViewRemove(){
+                this.$el.off('click', this.onClick);
+                Backbone.View.prototype.remove.apply(this, arguments);
             }
         });
 
@@ -293,16 +399,17 @@
 
                     //add the document image
                     var docImage = new SignatureTool.DocumentImageView({model: image});
-                    pageContent.append(docImage.render().el);
-                    this.docImageViews.push(docImage);
-
-                    //add document tags
                     var docTags = doc.get('tags').where({page: index + 1});
+
+                    //add document tags to the doc image
                     _.each(docTags, function(tag){
                         var docTag = new SignatureTool.DocumentTagView({model: tag});
-                        pageContent.append(docTag.render().el);
+                        docImage.$el.append(docTag.render().el);
                         this.docTagViews.push(docTag);
                     }, this);
+
+                    pageContent.append(docImage.render().el);
+                    this.docImageViews.push(docImage);
 
                     this.$el.append(pageContent);
                 }, this);
@@ -324,6 +431,14 @@
             },
             allPageElements: function DocumentViewAllPageElements(){
                 return this.$el.find('.page');
+            },
+            hide: function DocumentViewHide(){
+                this.$el.hide();
+                this.hidden = true;
+            },
+            show: function DocumentViewShow(){
+                this.$el.show();
+                this.hidden = false;
             }
         });
 
@@ -341,6 +456,8 @@
                 'click .nextSignature': 'nextSignatureClick'
             },
             initialize: function SignatureToolViewInitialize(){
+                viewOnly = (this.el.getAttribute('data-signature') != 'true');
+
                 this.viewerView = new SignatureTool.ViewerView({el: this.$el.find('.viewerContainer'), collection: this.collection});
                 this.modalView = new SignatureTool.SignatureModalView({el: this.$el.find('.signatureModal')});
             },
@@ -364,6 +481,9 @@
             },
             nextSignatureClick: function(evt){
                 SignatureTool.App.scrollToNext();
+            },
+            downloadHandler: function(evt){
+                SignatureTool.App.download();
             },
             pageNumberClick: function(evt){
                 evt.target.select();
@@ -405,6 +525,44 @@
             },
             setPageTotal: function SignatureToolViewSetPageTotal(val){
                 this.$el.find('.numPages')[0].innerHTML = 'of ' + val;
+            },
+            enableSubmit: function SignatureToolViewEnableSubmit(hasNext){
+                var $finishButton = this.$el.find('.finishSigning');
+                $finishButton.removeClass('inactive');
+                $finishButton.on('click', this.finishDocument);
+            },
+            disableSubmit: function SignatureToolViewDisableSubmit(hasNext){
+                var finishButton = this.$el.find('.finishSigning')[0];
+                $(finishButton).addClass('inactive');
+                $(finishButton).off('click', this.finishDocument);
+                if (hasNext){
+                    finishButton.innerHTML = 'Next <span class="desktop-only-inline">Document</span>';
+                } else {
+                    finishButton.innerHTML = 'Submit <span class="desktop-only-inline">Document</span>';
+                }
+            },
+            disableNext: function SignatureToolViewDisableNext(){
+                this.$el.find('.nextSignature').addClass('inactive');
+            },
+            enableNext: function SignatureToolViewEnableNext(){
+                this.$el.find('.nextSignature').removeClass('inactive');
+            },
+            finishDocument: function SignatureToolViewFinishDocument(evt){
+                SignatureTool.App.finishDocument();
+            },
+            submitForm: function SignatureToolViewSubmitForm(sig){
+                var sigType = this.$el.find('.sig_type')[0],
+                    sigData = this.$el.find('.sig_data')[0],
+                    sigForm = this.$el.find('.sig_form')[0];
+
+                if (sig.type == DRAWN_SIG){
+                    sigType.value = DRAWN_SIG;
+                    sigData.value = this.modalView.$signaturePad.jSignature('getData', 'default');
+                } else if (sig.type == TYPED_SIG){
+                    sigType.value = TYPED_SIG;
+                    sigData.value = sig.data;
+                }
+                sigForm.submit();
             }
         });
 
@@ -418,11 +576,18 @@
             },
             initialize: function ViewerViewInitialize(){
                 this.listenTo(this.collection, 'add', this.addDocument);
+                this.listenTo(this.collection, 'switch', this.switchDocument);
             },
-            addDocument: function ViewerViewAddDocument(doc){
-                var view = (this.collection.length > 1 ? new SignatureTool.DocumentView({model: doc, hidden: true}) : new SignatureTool.DocumentView({model: doc}));
+            addDocument: function ViewerViewAddDocument(doc, coll){
+                var view = (this.docViews.length > 0) ? new SignatureTool.DocumentView({model: doc, hidden: true}) : new SignatureTool.DocumentView({model: doc});
                 this.$el.append(view.render().el);
                 this.docViews.push(view);
+            },
+            switchDocument: function ViewerViewSwitchDocument(docIndex){
+                _.each(this.docViews, function(view){
+                    view.hide();
+                });
+                this.docViews[docIndex].show();
             }
         });
 
@@ -430,23 +595,156 @@
          * Requires el to be set on view creation
          */
         SignatureTool.SignatureModalView = Backbone.View.extend({
-            template: '',
-            events: {
 
+            events: {
+                'click .cancelSignature': 'hide',
+                'click .drawSignatureTab': 'showDrawTab',
+                'click .typeSignatureTab': 'showTypeTab',
+                'click .agreeSignature': 'checkTerms',
+                'click .signSignature': 'checkSignature',
+                'keyup .nameInput': 'typeSignature'
+            },
+            undoButtonRenderer: function SignatureModalViewUndoButtonRenderer(){
+                // TODO: make sure this works with multiple viewers
+                var $undoButton = $('<input type="button" value="Undo" class="undoButton" />')
+                        .appendTo(this.$controlbarUpper)
+                return $undoButton;
             },
             initialize: function SignatureModalViewInitialize(){
+                this.drawTab = this.$el.find('.drawSignatureTab')[0];
+                this.typeTab = this.$el.find('.typeSignatureTab')[0];
+                this.drawPad = this.$el.find('.signaturePad')[0];
+                this.typePad = this.$el.find('.signatureTypeWrapper')[0];
+                this.showDrawTab();
+
+                this.typeText = this.$el.find('.signatureType')[0];
+                this.setTypeFont('tangerine');
+
+                this.signButton = this.$el.find('.signSignature')[0];
+                this.disableSignButton();
+
+                this.nameInput = this.$el.find('.nameInput')[0];
+                this.agreeCheckbox = this.$el.find('.agreeSignature')[0];
+
+                //The element needs to be part of the DOM at initiation
+                this.$signaturePad = $(this.drawPad).jSignature({
+                    'UndoButton': this.undoButtonRenderer
+                });
+                this.hide();
+
+            },
+            show: function SignatureModalViewShow(){
+                this.el.style.opacity = 1;
+                this.$el.removeClass('sigHidden');
+            },
+            hide: function SignatureModalViewHide(){
+                this.el.style.opacity = 0;
+                this.$el.addClass('sigHidden');
+            },
+            showDrawTab: function SignatureModalViewShowDrawTab(){
+                $(this.drawTab).addClass('active');
+                $(this.typeTab).removeClass('active');
+                $(this.drawPad).removeClass('sigHidden');
+                $(this.typePad).addClass('sigHidden');
+            },
+            showTypeTab: function SignatureModalViewShowTypeTab(){
+                $(this.typeTab).addClass('active');
+                $(this.drawTab).removeClass('active');
+                $(this.typePad).removeClass('sigHidden');
+                $(this.drawPad).addClass('sigHidden');
+            },
+            checkTerms: function SignatureModalViewCheckTerms(evt){
+                if (evt.target.checked) this.enableSignButton();
+                else this.disableSignButton();
+            },
+            enableSignButton: function SignatureModalViewEnableSignButton(){
+                $(this.signButton).removeClass('inactive');
+            },
+            disableSignButton: function SignatureModalViewDisableSignButton(){
+                $(this.signButton).addClass('inactive');
+            },
+            // set fancy signature type font
+            setTypeFont: function SignatureModalViewSetTypeFont(fontName){
+                //Eagerly load a custom font
+                var s = document.createElement('span');
+                s.innerHTML = '&nbsp;';
+                s.setAttribute('style', "font-family: '" + fontName + "' !important");
+                s.style.visibility = 'hidden';
+                s.style.position = 'absolute';
+                s.style.top = '0px';
+                s.style.left = '0px';
+                s.style.height = '0px';
+                s.style.width = '0px';
+                document.body.appendChild(s);
+
+                if (!this.typeText) {
+                    console.warn('typeText not assigned yet');
+                    return;
+                }
+
+                this.typeText.setAttribute('style', "font-family: '" + fontName + "', 'cursive' !important");
+            },
+            typeSignature: function SignatureModalViewTypeSignature(evt){
+                this.typeText.innerHTML = evt.target.value;
+            },
+            checkSignature: function SignatureModalViewApplySignature(evt){
+                if ($(this.drawTab).hasClass('active')
+                    && this.$signaturePad.jSignature('getData', 'native').length === 0){
+                    this.displayError('Please draw your signature');
+                    return;
+                }
+                if ($(this.typeTab).hasClass('active') && !this.nameInput.value){
+                    this.displayError('Please type your signature');
+                    return;
+                }
+                if (!this.agreeCheckbox.checked){
+                    this.displayError('Please agree to the Terms of Service');
+                    return;
+                }
+
+                //extract the Signature, either as a bitmap or typed text
+                var sig = SignatureTool.Signature, s;
+                if ($(this.typeTab).hasClass('active')) {
+                    s = new sig({type: TYPED_SIG, data: this.nameInput.value});
+                } else if ($(this.drawTab).hasClass('active')) {
+                    s = new sig({type: DRAWN_SIG, data: this.$signaturePad.jSignature('getData', 'svg')});
+                }
+
+                SignatureTool.App.applySignature(s);
+
+                this.hide();
+            },
+            displayError: function SignatureModalViewDisplayError(err){
+                alert(err);
             }
         });
 
+        SignatureTool.Signature = Backbone.Model.extend({
+            defaults: {
+                type: null,
+                data: null
+            },
+            initialize: function SignatureInitialize(){}
+        });
+
+
         //GLOBALLY ACCESSIBLE HELPER FUNCTIONS
-        SignatureTool.scrollIntoView = function ScrollIntoView(element, spot, animate) {
+        /**
+         *
+         * @param element - DOM element to be scrolled to
+         * @param options - {spot: {top: height offset, left: horizontal offset},
+         *                   animate: boolean,
+         *                   callback: callback function once scroll has completed}
+         */
+        SignatureTool.scrollIntoView = function ScrollIntoView(element, options) {
+            options = options || {};
             // Assuming offsetParent is available (it's not available when viewer is in
             // hidden iframe or object).
             var parent = element.offsetParent;
             var offsetY = element.offsetTop + element.clientTop;
             var offsetX = element.offsetLeft + element.clientLeft;
             if (!parent) {
-                console.error('offsetParent is not set -- cannot scroll');
+                console.warn('offsetParent is not set -- cannot scroll');
                 return;
             }
             while (parent.clientHeight === parent.scrollHeight) {
@@ -461,7 +759,8 @@
                     return; // no need to scroll
                 }
             }
-            if (spot) {
+            if (options.spot) {
+                var spot = options.spot;
                 if (spot.top !== undefined) {
                     offsetY += spot.top;
                 }
@@ -472,10 +771,13 @@
             }
 
             var SCROLL_TOP_PADDING = 10;
-            if (animate) {
-                $(parent).animate({scrollTop: offsetY - SCROLL_TOP_PADDING}, 500);
+            if (options.animate) {
+                $(parent).animate({scrollTop: offsetY - SCROLL_TOP_PADDING}, 500, function(){
+                    if (options.callback) options.callback();
+                });
             } else {
                 parent.scrollTop = offsetY - SCROLL_TOP_PADDING;
+                if (options.callback) options.callback();
             }
         }
 
@@ -483,6 +785,8 @@
             var controller = {
                 currentScale: null,
                 currentScaleValue: null,
+                selectedSignatureTag: null,
+                signature: null,
                 initialize: function MainControllerInitialize(){
                     console.log('DOM-loaded: Initializing Main Controller.');
                     this.docs = new SignatureTool.Documents(null, {currentIndex: 0});
@@ -499,6 +803,9 @@
                         //initialize paging
                         self.initializePages();
                     });
+
+                    this.viewer.enableNext();
+                    this.viewer.disableSubmit(this.docs.hasNext());
                 },
                 setScale: function MainControllerSetScale(scale, docIndex){
                     docIndex = docIndex || 0;
@@ -560,12 +867,21 @@
                         if (!this.currentlyScrolling) {
                             //scroll the page into view
                             var pageEl = this._docView(this.docs.getCurrentIndex()).getPageElement(val);
-                            SignatureTool.scrollIntoView(pageEl, null, false);
+                            SignatureTool.scrollIntoView(pageEl);
                         }
                     }
                 },
                 scrollToNext: function MainControllerScrollToNext(){
-
+                    this.docs.getCurrent().scrollNextSignature();
+                },
+                showModal: function MainControllerShowModal(tagFieldId){
+                    this.selectedSignatureTag = tagFieldId;
+                    // only show if no signature is already present
+                    if (!this.signature) {
+                        this.viewer.modalView.show();
+                    } else {
+                        this.applySignature();
+                    }
                 },
                 initializePages: function MainControllerInitializePages(){
                     this.page = 1;
@@ -608,7 +924,7 @@
                     var visible = [], view;
                     var currentHeight, viewHeight, hiddenHeight, percentHeight;
                     var currentWidth, viewWidth;
-                    var views = this.viewer.viewerView.docViews[this.docs.getCurrentIndex()].allPageElements();
+                    var views = this._docView().allPageElements();
 
                     for (var i = 0, len = views.length; i < len; ++i) {
                         view = views[i];
@@ -647,8 +963,103 @@
                     }
                     return {first: first, last: last, views: visible};
                 },
+                applySignature: function MainControllerApplySignature(sig){
+                    var tag = this.docs.getCurrent().get('tags').findWhere({id: this.selectedSignatureTag});
+                    if (!this.signature) {
+                        this.signature = {data: sig.get('data'), type: sig.get('type')};
+                        tag.set('signature', {data: sig.get('data'), type: sig.get('type')});
+                    } else {
+                        tag.set('signature', {data: this.signature.data, type: this.signature.type});
+                    }
+
+                    this.selectedSignatureTag = null;
+                    if (this.docs.getCurrent().getNextSignature() === -1){
+                        this.viewer.disableNext();
+                        this.viewer.enableSubmit();
+                    }
+                },
+                finishDocument: function MainControllerFinishDocument(){
+                    if (this.docs.hasNext()){
+                        //set up the next document
+                        this.docs.getNext();
+
+                        //reset scale, footer buttons and toolbar pages
+                        this.setScale(DEFAULT_SCALE);
+                        this.viewer.enableNext();
+                        this.viewer.disableSubmit(this.docs.hasNext());
+                        this.page = 1;
+                        this.viewer.setPageTotal(this.docs.getCurrent().totalPages);
+                    } else {
+                        //submit the document info through a form
+                        this.viewer.submitForm(this.signature);
+                    }
+                },
+                //download the current document
+                download: function MainControllerDownload(){
+                    var url = location.origin + this.docs.getCurrent().get('download_url');
+
+                    if (!isValidUrl(url)) {
+                        alert('Download failed: Invalid download url.');
+                        return;
+                    }
+
+                    var filename = this._extractFilename(url);
+
+                    var a = document.createElement('a');
+                    if (a.click) {
+                        // Use a.click() if available. Otherwise, Chrome might show
+                        // "Unsafe JavaScript attempt to initiate a navigation change
+                        //  for frame with URL" and not open the PDF at all.
+                        // Supported by (not mentioned = untested):
+                        // - Firefox 6 - 19 (4- does not support a.click, 5 ignores a.click)
+                        // - Chrome 19 - 26 (18- does not support a.click)
+                        // - Opera 9 - 12.15
+                        // - Internet Explorer 6 - 10
+                        // - Safari 6 (5.1- does not support a.click)
+                        a.href = url;
+                        a.target = '_parent';
+                        // Use a.download if available. This increases the likelihood that
+                        // the file is downloaded instead of opened by another PDF plugin.
+                        if ('download' in a) {
+                            a.download = filename;
+                        }
+                        // <a> must be in the document for IE and recent Firefox versions.
+                        // (otherwise .click() is ignored)
+                        (document.body || document.documentElement).appendChild(a);
+                        a.click();
+                        a.parentNode.removeChild(a);
+                    } else {
+                        window.open(url, '_parent');
+
+                        var hiddenIFrameID = 'hiddenDownloader',
+                                iframe = document.getElementById(hiddenIFrameID);
+                        if (iframe === null) {
+                            iframe = document.createElement('iframe');
+                            iframe.id = hiddenIFrameID;
+                            iframe.style.display = 'none';
+                            document.body.appendChild(iframe);
+                        }
+                        iframe.src = url;
+                    }
+                },
                 _docView: function MainController_DocView(index){
-                    return this.viewer.viewerView.docViews[index];
+                    if (index !== undefined && index >= 0) {
+                        return this.viewer.viewerView.docViews[index];
+                    } else if (index === undefined){
+                        return this.viewer.viewerView.docViews[this.docs.getCurrentIndex()];
+                    }
+                },
+                _extractFilename: function MainController_ExtractFilename(url){
+                    if (!url || url.indexOf('/') === -1) return url;
+
+                    var filename = url.split('/');
+                    filename = filename[filename.length - 1];
+                    filename = filename.split('?');
+                    filename = filename[0];
+
+                    if (!filename || filename.indexOf('.') === -1) return url;
+
+                    return filename;
                 }
             }
 

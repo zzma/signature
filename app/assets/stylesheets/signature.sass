@@ -21,7 +21,7 @@ $link-blue: #4169E1
   font-weight: normal
   font-style: normal
 
-.outerViewer
+.outerViewerContainer
   input, button, select
     font: message-box
     outline: none
@@ -37,7 +37,7 @@ $link-blue: #4169E1
   -ms-user-select: none
   user-select: none
 
-#outerViewerContainer
+.outerViewerContainer
   width: 100%
   height: 100%
   position: relative
@@ -51,7 +51,7 @@ $link-blue: #4169E1
   font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, sans-serif !important
 
 
-#mainViewerContainer
+.mainViewerContainer
   position: absolute
   top: 0
   right: 0
@@ -66,16 +66,16 @@ $link-blue: #4169E1
     box-shadow: 0px 0px 2px #000000
     cursor: default
 
-#toolbarContainer
+.toolbarContainer
   position: relative
   height: $toolbar-height
   background-color: $base-color
   width: 100%
 
-#toolbarViewer
+.toolbarViewer
   height: $toolbar-height
 
-  #toolbarViewerLeft
+  .toolbarViewerLeft
     position: absolute
     top: 0
     left: 0
@@ -84,7 +84,7 @@ $link-blue: #4169E1
       position: relative
       float: left
 
-  #toolbarViewerRight
+  .toolbarViewerRight
     position: absolute
     top: 0
     right: 0
@@ -205,7 +205,7 @@ $link-blue: #4169E1
     text-align: right
     line-height: 22px
     text-decoration: none
-    
+
 .toolbarButton[disabled]
   opacity: .5
 
@@ -306,7 +306,7 @@ $link-blue: #4169E1
   overflow: hidden
   background: url(/assets/signature/toolbarButton-menuArrows.png) no-repeat
   background-position: 95%
-  
+
   &:hover:active
     background-color: hsla(0,0%,0%,.2)
     background-image: linear-gradient(hsla(0,0%,100%,.05), hsla(0,0%,100%,0))
@@ -321,7 +321,7 @@ $link-blue: #4169E1
 
   > select
     -webkit-appearance: none
-    -moz-appearance: none /* in the future this might matter, see bugzilla bug #649849 */
+    -moz-appearance: none /* in the future this might matter, see bugzilla bug .649849 */
     min-width: 140px
     font-size: 12px
     color: hsl(0,0%,95%)
@@ -332,7 +332,7 @@ $link-blue: #4169E1
   > select > option
     background: hsl(0,0%,24%)
 
-#viewerContainer
+.viewerContainer
   overflow: auto
   position: absolute
   top: $toolbar-height + 2px
@@ -382,8 +382,9 @@ $link-blue: #4169E1
   bottom: 0
   left: 0
   right: 0
-  box-shadow: 0px 0px 2px #000000
-#sigFooterContainer
+  box-shadow: 0px 0px 2px .000000
+
+.sigFooterContainer
   position: relative
   width: 100%
   height: $footer-height
@@ -427,11 +428,11 @@ $link-blue: #4169E1
     -moz-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05)
 
-#sigFooterContainerLeft
+.sigFooterContainerLeft
   float: left
   padding-left: 15px
 
-#nextSignature
+.nextSignature
   background-color: #da4f49
   background-image: -moz-linear-gradient(top, #ee5f5b, #bd362f)
   background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ee5f5b), to(#bd362f))
@@ -463,11 +464,11 @@ $link-blue: #4169E1
     cursor: default
     box-shadow: none
 
-#sigFooterContainerRight
+.sigFooterContainerRight
   float: right
   padding-right: 15px
 
-#signSignature, #finishSigning
+.signSignature, .finishSigning
   background-color: #5bb75b
   background-image: -moz-linear-gradient(top, #30c437, #13a31d)
   background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#30C437), to(#13A31D))
@@ -500,16 +501,20 @@ $link-blue: #4169E1
     box-shadow: none
 
 .signatureField
-  box-shadow: 0px 0px 5px #ff0000
   text-align: left
-
+  border: 2px solid #ff0000
   > div
-    width: 100%
     height: 100%
+  &.unsigned
+    background-color: rgba(255, 0, 0, 0.3)
+  &.unsigned:before
+    content: 'Click here to sign'
+  &.unsigned:hover
+    cursor: pointer
+    background-color: rgba(255, 0, 0, 0.5)
 
 
-
-#signatureModal
+.signatureModal
   position: absolute
   top: 0
   right: 0
@@ -518,7 +523,7 @@ $link-blue: #4169E1
   z-index: $higher-z
   background-color: rgba(0, 0, 0, 0.5)
   opacity: 0
-  //display: none
+//display: none
 
 .modalContainer
   margin: auto
@@ -574,7 +579,7 @@ ul.modalTabs
   right: 0
   text-align: left
 
-#typeSignatureForm
+.typeSignatureForm
   text-align: left
   padding: 0 5%
   width: 90%
@@ -644,7 +649,7 @@ ul.modalTabs
     right: 0
     line-height: 18px
 
-#cancelSignature
+.cancelSignature
   cursor: pointer
   position: absolute
   color: #000000
@@ -658,8 +663,8 @@ ul.modalTabs
   padding: 0
 
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important
-  font-size: 20px
-  font-weight: 900
+  font-size: 20px !important
+  font-weight: 900 !important
   line-height: 1
   text-shadow: 0 1px 0 #fff
   opacity: 0.2
@@ -667,7 +672,7 @@ ul.modalTabs
   &:hover
     opacity: 0.6
 
-#esignTerms
+.esignTerms
   color: $link-blue
   text-decoration: none
 
@@ -677,7 +682,7 @@ ul.modalTabs
   &:hover
     text-decoration: underline
 
-#undoButton
+.undoButton
   position: absolute
   display: none
   margin: 0 !important
@@ -688,16 +693,16 @@ ul.modalTabs
   color: $link-blue
   cursor: pointer
   font-size: 16px
-  
+
   &:hover
     text-decoration: underline
 
-#signaturePad, #signatureTypeWrapper
+.signaturePad, .signatureTypeWrapper
   height: 100%
   width: 100%
-  //text-align: center
+//text-align: center
 
-#signatureType
+.signatureType
   position: absolute
   top: 45%
   bottom: 10%
@@ -709,7 +714,7 @@ ul.modalTabs
   overflow-x: scroll
   overflow-y: hidden
 
-#typeUnderline
+.typeUnderline
   position: absolute
   top: 80%
   left: 5%
@@ -717,10 +722,10 @@ ul.modalTabs
   border: 0
   background-color: #3c3c3c
   height: 2px
-  
-#scaleSelectContainer
+
+.scaleSelectContainer
   margin-top: 5px
-  
+
 @media(min-width: 768px)
   .desktop-only-inline
     display: inline-block
@@ -736,7 +741,7 @@ ul.modalTabs
     display: none !important
   .device-only
     display: block
-    
+
   .toolbarButton.download
     width: 32px
     color: transparent
@@ -754,6 +759,6 @@ ul.modalTabs
     .modalFooterRight
       padding-right: 3px
 
-  #signatureType
+  .signatureType
     font-size: 24px
     top: 60%
