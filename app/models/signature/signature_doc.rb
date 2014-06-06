@@ -23,6 +23,7 @@ module Signature
       PDF2TXT = 'pdf2txt.py'
       IMAGEMAGICK = 'convert'
       GHOSTSCRIPT = 'gs'
+      PDFTOPPM = 'pdftoppm'
 
       DRAWN_SIG = 'sig'
       TYPED_SIG = 'text'
@@ -38,14 +39,15 @@ module Signature
       }
 
       #from document_image - TODO: refactor constants
-      RES_SCALE = 3
+      RES_SCALE = 2
       RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
 
       #TODO: add scopes
       #scope :signed, lambda { where("signed_at is not NULL and signed_at != ''") }
       #scope :unsigned, lambda { where("signed_at is NULL or signed_at == ''") }
 
-      after_commit :process_document, :on => :create
+      #TODO: uncomment this
+      #after_commit :process_document, :on => :create
     end
 
     def signed?
@@ -151,7 +153,8 @@ module Signature
       process_document
     end
 
-    private
+    #TODO: uncomment this
+    #private
 
     # Handle tag names of the form {{!tag_name}} and parse them to tag_name
     # Logs a warning if the tag name is of improper form
@@ -195,21 +198,36 @@ module Signature
       #remove the current document images
       self.document_images.map(&:destroy)
 
-      #  convert -density 200 -quality 80 file.pdf file.png
-      image_file = self.doc.path.gsub(/\.pdf/, '.png')
+      #image_file = self.doc.path.gsub(/\.pdf/, '.png')
+      #
+      #line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + RES.to_s + ' -sOutputFile=:image_file :pdf_file')
+      #line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
+      #
+      #page_count = PDF::Reader.new(self.doc.path).page_count
+      #
+      #if page_count and page_count > 0
+      #  filename = image_file.gsub(/\.png/, '')
+      #  extension = '.png'
+      #  for index in (1...page_count+1)
+      #    self.document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
+      #  end
+      #end
 
-      line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + RES.to_s + ' -sOutputFile=:image_file :pdf_file')
-      line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
+      image_file = self.doc.path.gsub(/\.pdf/, '')
+
+      line = Cocaine::CommandLine.new(PDFTOPPM, '-jpeg -r ' + RES.to_s + ' :pdf_file :image_file')
+      line.run(:image_file => image_file, :pdf_file => self.doc.path)
 
       page_count = PDF::Reader.new(self.doc.path).page_count
 
       if page_count and page_count > 0
-        filename = image_file.gsub(/\.png/, '')
-        extension = '.png'
+        filename = image_file
+        extension = '.jpg'
         for index in (1...page_count+1)
           self.document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
         end
       end
+
 
       if self.tag_fields.present?
         connect_tags_to_images
