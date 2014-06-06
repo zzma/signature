@@ -7,15 +7,8 @@ module Signature
     included do
       attr_accessible :height, :name, :value, :document, :document_image, :tag_type, :width, :x, :y, :page
 
-      #from document_image - TODO: refactor constants
-      RES_SCALE = 3
-      RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
-
-      TAG_TYPES = {
-          signature: 'signature',
-          text: 'text',
-          checkbox: 'checkbox'
-      }
+      TAG_TYPES = Signature::Constants::TAG_TYPES
+      RES_SCALE = Signature::Constants::RES_SCALE
 
       TAG_TYPES.each do |meth, index|
         define_method("#{meth}?") { tag_type == TAG_TYPES[meth] }

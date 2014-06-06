@@ -11,9 +11,6 @@ module Signature
                         :url => "/system/:rails_env/:class/:attachment/:id/:filename"
 
       validates_attachment_content_type :image, :content_type => /^image\/(png|gif|jpeg)/
-
-      RES_SCALE = 3
-      RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
     end
 
   end

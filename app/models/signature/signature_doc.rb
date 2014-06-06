@@ -4,6 +4,16 @@ require 'date'
 
 
 module Signature
+  module Constants
+    RES_SCALE = 2
+    RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
+
+    TAG_TYPES = {
+        signature: 'signature',
+        text: 'text',
+        checkbox: 'checkbox'
+    }
+  end
   module SignatureDoc
     extend ActiveSupport::Concern
 
@@ -30,17 +40,6 @@ module Signature
 
       WIDTH_BUFFER = 2 # additional width added to the tag fields
       HEIGHT_BUFFER = -6 # additional height added to the tag fields
-
-      #from tag field - TODO: refactor constants
-      TAG_TYPES = {
-          signature: 'signature',
-          text: 'text',
-          checkbox: 'checkbox'
-      }
-
-      #from document_image - TODO: refactor constants
-      RES_SCALE = 2
-      RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
 
       #TODO: add scopes
       #scope :signed, lambda { where("signed_at is not NULL and signed_at != ''") }
@@ -170,9 +169,9 @@ module Signature
     def get_tag_type(str)
       # TODO: add the ability to handle checkbox fields
       if parse_tag_name(str).split(':')[-1] == 'signature'
-        return TAG_TYPES[:signature]
+        return Signature::Constants::TAG_TYPES[:signature]
       else
-        return TAG_TYPES[:text]
+        return Signature::Constants::TAG_TYPES[:text]
       end
     end
 
@@ -213,7 +212,7 @@ module Signature
 
       image_file = self.doc.path.gsub(/\.pdf/, '')
 
-      line = Cocaine::CommandLine.new(PDFTOPPM, '-jpeg -r ' + RES.to_s + ' :pdf_file :image_file')
+      line = Cocaine::CommandLine.new(PDFTOPPM, '-jpeg -r ' + Signature::Constants::RES.to_s + ' :pdf_file :image_file')
       line.run(:image_file => image_file, :pdf_file => self.doc.path)
 
       page_count = PDF::Reader.new(self.doc.path).page_count
