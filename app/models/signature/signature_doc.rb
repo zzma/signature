@@ -46,8 +46,7 @@ module Signature
       #scope :signed, lambda { where("signed_at is not NULL and signed_at != ''") }
       #scope :unsigned, lambda { where("signed_at is NULL or signed_at == ''") }
 
-      #TODO: uncomment this
-      #after_commit :process_document, :on => :create
+      after_commit :process_document, :on => :create
     end
 
     def signed?
@@ -153,8 +152,7 @@ module Signature
       process_document
     end
 
-    #TODO: uncomment this
-    #private
+    private
 
     # Handle tag names of the form {{!tag_name}} and parse them to tag_name
     # Logs a warning if the tag name is of improper form
