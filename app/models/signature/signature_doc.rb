@@ -83,7 +83,7 @@ module Signature
       if tags
         tag_fields = self.tag_fields
         tags.each do |tag_name, value|
-          fields = tag_fields.select{|tf| tf.name == tag_name.to_s}
+          fields = tag_fields.select{|tf| tf.name.gsub(/!/,'') == tag_name.to_s.gsub(/!/, '')}
           if fields.present?
             fields.each do |field|
               field.update_attributes(value: value)
@@ -152,6 +152,8 @@ module Signature
     end
 
     private
+
+
 
     # Handle tag names of the form {{!tag_name}} and parse them to tag_name
     # Logs a warning if the tag name is of improper form

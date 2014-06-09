@@ -28,7 +28,8 @@ module Signature
           height: (self.height + height_adjust) * RES_SCALE,
           width: self.width * RES_SCALE,
           tag_type: self.tag_type,
-          page: self.page
+          page: self.page,
+          name: self.name
       }
 
     end

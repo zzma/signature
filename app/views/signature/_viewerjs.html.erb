@@ -78,8 +78,9 @@
 
         SignatureTool.SignatureField = Backbone.Model.extend({
             defaults: {
-                tag_type: null,
+                tag_type: null, //signature, text, checkbox, or input
                 page: null,
+                name: null,
                 originalPosition: {
                     x: null,
                     y: null,
@@ -90,14 +91,18 @@
             },
             initialize: function SignatureFieldInitialize(options) {
                 if (options) {
+                    var type = options.type;
+                    if (options.name.indexOf('!') === -1) {
+                        type = 'input';
+                    }
                     this.set('originalPosition', {
+                        tag_type: type,
                         x: options.x,
                         y: options.y,
                         width: options.width,
                         height: options.height
                     });
                 }
-
             }
         });
 
