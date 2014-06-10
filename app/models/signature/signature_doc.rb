@@ -132,7 +132,8 @@ module Signature
         self.update_attributes(has_summary: true)
       end
 
-      generate_document_images
+      #TODO: uncomment - removed for speed
+      #generate_document_images
     end
 
     #unsign a document
@@ -152,9 +153,6 @@ module Signature
     end
 
     private
-
-
-
     # Handle tag names of the form {{!tag_name}} and parse them to tag_name
     # Logs a warning if the tag name is of improper form
     def parse_tag_name(str)
@@ -474,7 +472,8 @@ module Signature
     def process_document
       process_tag_fields
       hide_text_tags
-      generate_document_images
+      #TODO: uncomment - removed for speed
+      #generate_document_images
     end
     
   end

@@ -76,7 +76,7 @@
             }
         });
 
-        SignatureTool.SignatureField = Backbone.Model.extend({
+        SignatureTool.TagField = Backbone.Model.extend({
             defaults: {
                 tag_type: null, //signature, text, checkbox, or input
                 page: null,
@@ -89,12 +89,14 @@
                 }
                 //document reference / foreign key?
             },
-            initialize: function SignatureFieldInitialize(options) {
+            initialize: function TagFieldInitialize(options) {
                 if (options) {
                     var type = options.type;
-                    if (options.name.indexOf('!') === -1) {
+
+                    if (options.type == 'text' && options.name.indexOf('!') === -1) {
                         type = 'input';
                     }
+
                     this.set('originalPosition', {
                         tag_type: type,
                         x: options.x,
@@ -103,12 +105,43 @@
                         height: options.height
                     });
                 }
+            },
+            isSignature: function TagFieldIsSignature(){
+                return this.get('tag_type') == 'signature';
+            },
+            isInput: function TagFieldIsSignature(){
+                return this.get('tag_type') == 'input';
+            },
+            isValid: function TagFieldIsValid(){
+                //simple validation that a signature or value exists
+                return !!this.get('signature') || !!this.get('value');
             }
         });
 
-        SignatureTool.SignatureFields = Backbone.Collection.extend({
-            model: SignatureTool.SignatureField,
-            initialize: function SignatureFieldsInitialize(options) {
+        SignatureTool.TagFields = Backbone.Collection.extend({
+            model: SignatureTool.TagField,
+            initialize: function TagFieldsInitialize(models, options) {
+            },
+            //override add function to only add models for signature tags and
+            //input tag fields (aka don't have a leading exclamation point)
+            add: function TagFieldsAdd(models, options){
+                models = _.reject(models, function(tag){
+                    if (tag.tag_type == 'signature') return false;
+                    if (tag.tag_type ==  'text'){
+                        if (tag.name.indexOf('!') !== 0) {
+                            tag.tag_type = 'input';
+                            return false;
+                        } else return true;
+                    } else return true;
+                });
+
+                Backbone.Collection.prototype.add.call(this, models, options);
+            },
+            signatureFields: function TagFieldsSignatureFields(){
+                return this.where({tag_type: 'signature'});
+            },
+            inputFields: function TagFieldInputFields(){
+                return this.where({tag_type: 'input'});
             }
         });
 
@@ -139,22 +172,22 @@
             _currentPageNumber: 1,
             _loadCount: 0,
             totalPages: 0,
-            _nextSignature: null,
+            _nextTagField: null,
             defaults: {
                 id: null,
                 download_url: null,
-                images: new SignatureTool.DocumentImages,
-                tags: new SignatureTool.SignatureFields
+                images: null,
+                tags: null
             },
             initialize: function DocumentInitialize(options) {
                 if (options && options.images && options.tags) {
                     var tags;
                     if (!viewOnly) {
-                        tags = _.filter(options.tags, function(tag){ return tag.tag_type == 'signature'});
+                        tags = _.filter(options.tags, function(tag){ return (tag.tag_type == 'signature' || tag.tag_type == 'text')});
                     }
                     this.set({
                         images: new SignatureTool.DocumentImages(options.images),
-                        tags: new SignatureTool.SignatureFields(tags,
+                        tags: new SignatureTool.TagFields(tags,
                                 {comparator: function(a, b){
                                     var pageA = a.get('page'),
                                         pageB = b.get('page'),
@@ -165,8 +198,8 @@
 
                                     if (pageA > pageB) return 1;
                                     if (pageA < pageB) return -1;
-                                    if (yA > yB) return 1;
-                                    if (yA < yB) return -1;
+                                    if (yA > yB) return -1;
+                                    if (yA < yB) return 1;
                                     if (xA > xB) return 1;
                                     if (xA < xB) return -1;
 
@@ -174,8 +207,8 @@
                                 }})
                     });
 
-                    if (options.tags.length > 0) this._nextSignature = 0;
-                    else this._nextSignature = -1;
+                    if (options.tags.length > 0) this._nextTagField = 0;
+                    else this._nextTagField = -1;
                 }
 
                 this.totalPages = this.get('images').length;
@@ -214,18 +247,31 @@
             // returns false if no next signature, otherwise returns true and fires a
             // 'scroll' event to the signature tag model
             scrollNextSignature: function DocumentScrollNextSignature(){
-                if (this._nextSignature < 0) return false;
+                if (this._nextTagField < 0) return false;
 
-                this.get('tags').at(this._nextSignature).trigger('scroll');
+                this.get('tags').at(this._nextTagField).trigger('scroll');
 
                 return true;
             },
-            getNextSignature: function DocumentGetNextSignature(){
+            getNextField: function DocumentGetNextField(){
                 var tagsLength = this.get('tags').length;
-                this._nextSignature = (this._nextSignature < tagsLength - 1) ? this._nextSignature + 1 : -1;
-                return this._nextSignature;
-            }
+                this._nextTagField = 0;
+                do {
+                    this._nextTagField = (this._nextTagField < tagsLength - 1) ? this._nextTagField + 1 : -1;
+                }
+                while (this._nextTagField >= 0 && this.get('tags').at(this._nextTagField).isValid());
 
+                return this._nextTagField;
+            },
+            //returns an object of the form {id: document_id, field_name: field_value, etc.}
+            getInputData: function DocumentGetInputData(){
+                var data = {};
+                data.id = this.id;
+                _.each(this.get('tags').inputFields(), function(input){
+                    data[input.get('name')] = input.get('value');
+                });
+                return data;
+            }
         });
 
         SignatureTool.Documents = Backbone.Collection.extend({
@@ -311,11 +357,11 @@
             }
         });
 
-        //Accepts SignatureField as a model
-        SignatureTool.DocumentTagView = Backbone.View.extend({
+        //Accepts tag_type == 'signature' TagField as a model
+        SignatureTool.SignatureTagView = Backbone.View.extend({
             tagName: 'div',
             className: 'signatureField noSelect unsigned',
-            initialize: function DocumentTagViewInitialize(){
+            initialize: function SignatureTagViewInitialize(){
                 this.listenTo(this.model, 'change', this.render);
                 this.listenTo(this.model, 'scroll', this.scrollTo);
 
@@ -326,7 +372,7 @@
                     this.$el.off('click', this.onClick);
                 });
             },
-            render: function DocumentTagViewRender(scale){
+            render: function SignatureTagViewRender(scale){
                 scale = scale || 1;
 
                 this.el.style.position = 'absolute';
@@ -335,6 +381,7 @@
                 this.el.style.height = (this.model.get('height') * scale) + 'px';
                 this.el.style.width = (this.model.get('width') * scale) + 'px';
 
+                this.el.style.fontSize = Math.round(16 * scale) + 'px';
                 //see if a signature exists
                 if (this.model.hasChanged('signature')) {
                     this.$el.removeClass('unsigned');
@@ -365,24 +412,81 @@
 
                 return this;
             },
-            scrollTo: function DocumentTagViewScrollTo(){
+            scrollTo: function SignatureTagViewScrollTo(){
+                var self = this;
                 SignatureTool.scrollIntoView(this.el, {animate: true,
                     callback: function(){
-                        //TODO: implement a field flashing callback
+                        self.attentionFlash();
                     }});
             },
-            clickHandler: function DocumentTagViewOnClick(handler){
+            clickHandler: function SignatureTagViewOnClick(handler){
                 this._clickHandler = handler;
             },
-            onClick: function DocumentTagViewClickHandler(){
+            onClick: function SignatureTagViewClickHandler(){
                 //TODO: is this necessary?
                 if (this._clickHandler) { this._clickHandler(); }
 
                 SignatureTool.App.showModal(this.model.get('id'));
             },
-            remove: function DocumentTagViewRemove(){
+            remove: function SignatureTagViewRemove(){
                 this.$el.off('click', this.onClick);
                 Backbone.View.prototype.remove.apply(this, arguments);
+            },
+            attentionFlash: function SignatureTagViewAttentionFlash(){
+                SignatureTool.flashAnimation(this.$el);
+            }
+        });
+
+        //Accepts tag_type == 'input' TagField as a model
+        SignatureTool.InputTagView = Backbone.View.extend({
+            tagName: 'input',
+            className: 'inputField noSelect',
+            events: {
+                'blur': 'onBlur'
+            },
+            initialize: function InputTagViewInitialize(){
+                this.listenTo(this.model, 'scroll', this.scrollTo);
+            },
+            render: function InputTagViewRender(scale){
+                scale = scale || 1;
+
+                var VERT_PADDING = 4 * scale, HORIZ_PADDING = 8 * scale,
+                    DEFAULT_FONT_SIZE = 14 * scale;
+
+                this.el.style.position = 'absolute';
+                this.el.style.bottom = (this.model.get('y') * scale + VERT_PADDING) + 'px';
+                this.el.style.left = (this.model.get('x') * scale + HORIZ_PADDING) + 'px';
+                this.el.style.height = (this.model.get('height') * scale - VERT_PADDING) + 'px';
+                this.el.style.width = (this.model.get('width') * scale - HORIZ_PADDING) + 'px';
+
+                this.el.style.fontSize = Math.round(DEFAULT_FONT_SIZE) + 'px';
+                return this;
+            },
+            scrollTo: function InputTagViewScrollTo(){
+                var self = this;
+                SignatureTool.scrollIntoView(this.el, {animate: true,
+                    callback: function(){
+                        self.attentionFlash();
+                    }});
+                this.el.focus();
+            },
+            clickHandler: function InputTagViewOnClick(handler){
+                this._clickHandler = handler;
+            },
+            onClick: function InputTagViewClickHandler(evt){
+                evt.target.focus();
+                //TODO: is this necessary?
+                if (this._clickHandler) { this._clickHandler(); }
+
+                //TODO: figure out what to do on click
+            },
+            onBlur: function InputTagViewOnBlur(evt){
+                this.model.set('value', evt.target.value);
+                SignatureTool.App.getNextField();
+            },
+            attentionFlash: function InputTagViewAttentionFlash(){
+                this.el.setAttribute('placeholder', 'Please fill out this field');
+                SignatureTool.flashAnimation(this.$el);
             }
         });
 
@@ -408,7 +512,13 @@
 
                     //add document tags to the doc image
                     _.each(docTags, function(tag){
-                        var docTag = new SignatureTool.DocumentTagView({model: tag});
+                        var docTag;
+                        if (tag.isSignature()){
+                            docTag = new SignatureTool.SignatureTagView({model: tag});
+                        } else if (tag.isInput()){
+                            docTag = new SignatureTool.InputTagView({model: tag});
+                        }
+
                         docImage.$el.append(docTag.render().el);
                         this.docTagViews.push(docTag);
                     }, this);
@@ -535,6 +645,8 @@
                 var $finishButton = this.$el.find('.finishSigning');
                 $finishButton.removeClass('inactive');
                 $finishButton.on('click', this.finishDocument);
+
+                SignatureTool.flashAnimation($finishButton);
             },
             disableSubmit: function SignatureToolViewDisableSubmit(hasNext){
                 var finishButton = this.$el.find('.finishSigning')[0];
@@ -554,6 +666,18 @@
             },
             finishDocument: function SignatureToolViewFinishDocument(evt){
                 SignatureTool.App.finishDocument();
+            },
+            updateForm: function SignatureToolViewUpdateForm(docId, data){
+                if (docId === undefined) return;
+
+                var sigForm = this.$el.find('.sig_form')[0];
+                _.each(data, function(val, key){
+                    var input = document.createElement('input');
+                    input.setAttribute('type', 'hidden');
+                    input.setAttribute('name', 'tags[' + docId + '][' + key + ']');
+                    input.setAttribute('value', val);
+                    sigForm.appendChild(input);
+                }, this);
             },
             submitForm: function SignatureToolViewSubmitForm(sig){
                 var sigType = this.$el.find('.sig_type')[0],
@@ -785,6 +909,17 @@
                 if (options.callback) options.callback();
             }
         }
+        SignatureTool.flashAnimation = function FlashAnimation($el, duration){
+            duration = duration || 300;
+
+            $el.animate({opacity: 0.25}, duration, function(){
+                $el.animate({opacity: 1}, duration, function(){
+                    $el.animate({opacity: 0.25}, duration, function(){
+                        $el.animate({opacity: 1}, duration);
+                    });
+                });
+            });
+        }
 
         SignatureTool.MainController = function(){
             var controller = {
@@ -978,12 +1113,23 @@
                     }
 
                     this.selectedSignatureTag = null;
-                    if (this.docs.getCurrent().getNextSignature() === -1){
+                    this.getNextField();
+                },
+                getNextField: function MainControllerGetNextField(){
+                    if (this.docs.getCurrent().getNextField() === -1){
                         this.viewer.disableNext();
                         this.viewer.enableSubmit();
+                    } else {
+                        this.viewer.enableNext();
+                        this.viewer.disableSubmit();
                     }
                 },
                 finishDocument: function MainControllerFinishDocument(){
+                    //process document input information
+                    var current = this.docs.getCurrent();
+                    this.viewer.updateForm(current.get('id'), current.getInputData());
+
+                    //move to the next document, or submit
                     if (this.docs.hasNext()){
                         //set up the next document
                         this.docs.getNext();
