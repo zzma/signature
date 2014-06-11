@@ -520,8 +520,6 @@
                 evt.target.focus();
                 //TODO: is this necessary?
                 if (this._clickHandler) { this._clickHandler(); }
-
-                //TODO: figure out what to do on click
             },
             onBlur: function InputTagViewOnBlur(evt){
                 this.model.set('value', evt.target.value);
@@ -1195,7 +1193,7 @@
                         this.viewer.setPageTotal(this.docs.getCurrent().totalPages);
                     } else {
                         //submit the document info through a form
-//                        this.viewer.submitForm(this.signature);
+                        this.viewer.submitForm(this.signature);
                     }
                 },
                 //download the current document

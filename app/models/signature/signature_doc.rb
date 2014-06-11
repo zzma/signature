@@ -79,7 +79,7 @@ module Signature
 
     # Apply existing tags to the signature document
     # Accepts a hash of new tags {tag_name1: value1, tag_name2: value2, ...}
-    def apply_tags(tags=nil)
+    def apply_tags(tags=nil, generate_images=true)
       if tags
         tag_fields = self.tag_fields
         tags.each do |tag_name, value|
@@ -93,7 +93,7 @@ module Signature
       end
 
       populate_tags
-      generate_document_images
+      generate_document_images if (generate_images)
     end
 
     def hide_text_tags
