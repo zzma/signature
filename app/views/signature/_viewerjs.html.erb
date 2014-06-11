@@ -487,11 +487,11 @@
             render: function InputTagViewRender(scale){
                 scale = scale || 1;
 
-                var VERT_PADDING = 4 * scale, HORIZ_PADDING = 0 * scale,
+                var VERT_PADDING = 0 * scale, HORIZ_PADDING = 0 * scale,
                     DEFAULT_FONT_SIZE = 14 * scale;
 
                 this.el.style.position = 'absolute';
-                this.el.style.bottom = (this.model.get('y') * scale + VERT_PADDING - 1) + 'px';
+                this.el.style.bottom = (this.model.get('y') * scale + VERT_PADDING) + 'px';
                 this.el.style.left = (this.model.get('x') * scale + HORIZ_PADDING) + 'px';
                 this.el.style.height = (this.model.get('height') * scale - VERT_PADDING) + 'px';
                 this.el.style.width = (this.model.get('width') * scale - HORIZ_PADDING) + 'px';
