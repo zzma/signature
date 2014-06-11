@@ -468,7 +468,8 @@
             className: 'inputField noSelect',
             events: {
                 'keyup': 'onBlur',
-                'blur': 'onBlur'
+                'blur': 'onBlur',
+                'focus': 'onFocus'
             },
             initialize: function InputTagViewInitialize(){
                 this.listenTo(this.model, 'scroll', this.scrollTo);
@@ -479,22 +480,25 @@
                 } else {
                     this.$el.addClass('required');
                 }
+
+                var val = this.model.get('value');
+                if (val) this.$el.attr('value', val);
             },
             render: function InputTagViewRender(scale){
                 scale = scale || 1;
 
-                var VERT_PADDING = 4 * scale, HORIZ_PADDING = 8 * scale,
+                var VERT_PADDING = 4 * scale, HORIZ_PADDING = 0 * scale,
                     DEFAULT_FONT_SIZE = 14 * scale;
 
                 this.el.style.position = 'absolute';
-                this.el.style.bottom = (this.model.get('y') * scale + VERT_PADDING) + 'px';
+                this.el.style.bottom = (this.model.get('y') * scale + VERT_PADDING - 1) + 'px';
                 this.el.style.left = (this.model.get('x') * scale + HORIZ_PADDING) + 'px';
                 this.el.style.height = (this.model.get('height') * scale - VERT_PADDING) + 'px';
                 this.el.style.width = (this.model.get('width') * scale - HORIZ_PADDING) + 'px';
 
                 this.el.style.fontSize = Math.round(DEFAULT_FONT_SIZE) + 'px';
 
-                if (this.model.get('value')) {
+                if (this.model.isValid()) {
                     this.$el.addClass('valid');
                 } else {
                     this.$el.removeClass('valid');
@@ -526,6 +530,9 @@
             attentionFlash: function InputTagViewAttentionFlash(){
                 this.el.setAttribute('placeholder', 'Please fill out this field');
                 SignatureTool.flashAnimation(this.$el);
+            },
+            onFocus: function InputTagOnFocus(evt){
+                setTimeout(function(){evt.target.select();}, 0); //needed to work on Chrome
             }
         });
 

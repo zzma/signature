@@ -29,7 +29,8 @@ module Signature
           width: self.width * RES_SCALE,
           tag_type: self.tag_type,
           page: self.page,
-          name: self.name
+          name: self.name,
+          value: self.value
       }
 
     end
