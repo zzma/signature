@@ -83,7 +83,7 @@ module Signature
       if tags
         tag_fields = self.tag_fields
         tags.each do |tag_name, value|
-          fields = tag_fields.select{|tf| tf.name.gsub(/!/,'') == tag_name.to_s.gsub(/!/, '')}
+          fields = tag_fields.select{|tf| base_tag_name(tf.name) == base_tag_name(tag_name.to_s)}
           if fields.present?
             fields.each do |field|
               field.update_attributes(value: value)
@@ -455,6 +455,9 @@ module Signature
       replace_file(output, input)
     end
 
+    def base_tag_name(name)
+      return name.gsub(/^!|!$/, '').gsub(/^\*|\*$/, '')
+    end
 
     def replace_file(replacing_file, replaced_file)
       line = Cocaine::CommandLine.new('mv', ':new_file :original_file')

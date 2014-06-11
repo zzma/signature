@@ -79,8 +79,10 @@
         SignatureTool.TagField = Backbone.Model.extend({
             defaults: {
                 tag_type: null, //signature, text, checkbox, or input
+                optional: false, //boolean indicating if field is optional
                 page: null,
                 name: null,
+                value: null,
                 originalPosition: {
                     x: null,
                     y: null,
@@ -91,14 +93,21 @@
             },
             initialize: function TagFieldInitialize(options) {
                 if (options) {
-                    var type = options.type;
+                    //check if the field is text, when it should be input
+                    if (options.tag_type == 'text') {
+                        if (options.name.indexOf('1') !== 0){
+                            this.set('tag_type', 'input');
+                        }
+                    }
 
-                    if (options.type == 'text' && options.name.indexOf('!') === -1) {
-                        type = 'input';
+                    //check if the field is optional
+                    if (options.tag_type == 'input' || this.get('tag_type') == 'input'){
+                        if (options.name.indexOf('*') === -1) {
+                            this.set('optional', true);
+                        }
                     }
 
                     this.set('originalPosition', {
-                        tag_type: type,
                         x: options.x,
                         y: options.y,
                         width: options.width,
@@ -114,7 +123,13 @@
             },
             isValid: function TagFieldIsValid(){
                 //simple validation that a signature or value exists
-                return !!this.get('signature') || !!this.get('value');
+                return !!this.get('value');
+            },
+            isRequired: function TagFieldIsRequired(){
+                return !this.get('optional');
+            },
+            isOptional: function TagFieldIsOptional(){
+                return this.get('optional');
             }
         });
 
@@ -183,7 +198,10 @@
                 if (options && options.images && options.tags) {
                     var tags;
                     if (!viewOnly) {
-                        tags = _.filter(options.tags, function(tag){ return (tag.tag_type == 'signature' || tag.tag_type == 'text')});
+                        //only add signature and text (possibly input) fields
+                        tags = _.filter(options.tags, function(tag){
+                            return (tag.tag_type == 'signature' || tag.tag_type == 'text')
+                        });
                     }
                     this.set({
                         images: new SignatureTool.DocumentImages(options.images),
@@ -254,21 +272,28 @@
                 return true;
             },
             getNextField: function DocumentGetNextField(){
-                var tagsLength = this.get('tags').length;
+                var tags = this.get('tags'),
+                    tagsLength = tags.length,
+                    tag;
                 this._nextTagField = 0;
-                do {
+                tag = tags.at(this._nextTagField);
+                while (this._nextTagField >= 0 && (tag.isValid() || tag.isOptional())) {
                     this._nextTagField = (this._nextTagField < tagsLength - 1) ? this._nextTagField + 1 : -1;
+                    tag = tags.at(this._nextTagField);
                 }
-                while (this._nextTagField >= 0 && this.get('tags').at(this._nextTagField).isValid());
 
                 return this._nextTagField;
             },
             //returns an object of the form {id: document_id, field_name: field_value, etc.}
             getInputData: function DocumentGetInputData(){
+                var baseTagName = function BaseTagName(name){
+                    return name.replace(/^!|!$/g, '').replace(/^\*|\*$/g, '');
+                }
                 var data = {};
                 data.id = this.id;
                 _.each(this.get('tags').inputFields(), function(input){
-                    data[input.get('name')] = input.get('value');
+                    var val = input.get('value');
+                    if (val) data[baseTagName(input.get('name'))] = val;
                 });
                 return data;
             }
@@ -368,7 +393,7 @@
                 //manually added click handler
                 this.$el.on('click', $.proxy(this.onClick, this));
                 //remove click handler once the field has been signed
-                this.listenToOnce(this.model, 'change:signature', function(){
+                this.listenToOnce(this.model, 'change:value', function(){
                     this.$el.off('click', this.onClick);
                 });
             },
@@ -383,11 +408,11 @@
 
                 this.el.style.fontSize = Math.round(16 * scale) + 'px';
                 //see if a signature exists
-                if (this.model.hasChanged('signature')) {
+                if (this.model.hasChanged('value')) {
                     this.$el.removeClass('unsigned');
 
-                    var sigType = this.model.get('signature').type,
-                        sigData = this.model.get('signature').data;
+                    var sigType = this.model.get('value').type,
+                        sigData = this.model.get('value').data;
 
                     while (this.el.firstChild){
                         this.el.removeChild(this.el.firstChild);
@@ -442,10 +467,18 @@
             tagName: 'input',
             className: 'inputField noSelect',
             events: {
+                'keyup': 'onBlur',
                 'blur': 'onBlur'
             },
             initialize: function InputTagViewInitialize(){
                 this.listenTo(this.model, 'scroll', this.scrollTo);
+                this.listenTo(this.model, 'change:value', this.render);
+
+                if (this.model.get('optional')) {
+                    this.$el.addClass('optional');
+                } else {
+                    this.$el.addClass('required');
+                }
             },
             render: function InputTagViewRender(scale){
                 scale = scale || 1;
@@ -460,6 +493,12 @@
                 this.el.style.width = (this.model.get('width') * scale - HORIZ_PADDING) + 'px';
 
                 this.el.style.fontSize = Math.round(DEFAULT_FONT_SIZE) + 'px';
+
+                if (this.model.get('value')) {
+                    this.$el.addClass('valid');
+                } else {
+                    this.$el.removeClass('valid');
+                }
                 return this;
             },
             scrollTo: function InputTagViewScrollTo(){
@@ -643,20 +682,26 @@
             },
             enableSubmit: function SignatureToolViewEnableSubmit(hasNext){
                 var $finishButton = this.$el.find('.finishSigning');
-                $finishButton.removeClass('inactive');
-                $finishButton.on('click', this.finishDocument);
+                if ($finishButton.hasClass('inactive')){
+                    $finishButton.removeClass('inactive');
+                    $finishButton.on('click', this.finishDocument);
 
-                SignatureTool.flashAnimation($finishButton);
+                    SignatureTool.flashAnimation($finishButton);
+                }
             },
             disableSubmit: function SignatureToolViewDisableSubmit(hasNext){
-                var finishButton = this.$el.find('.finishSigning')[0];
-                $(finishButton).addClass('inactive');
-                $(finishButton).off('click', this.finishDocument);
-                if (hasNext){
-                    finishButton.innerHTML = 'Next <span class="desktop-only-inline">Document</span>';
-                } else {
-                    finishButton.innerHTML = 'Submit <span class="desktop-only-inline">Document</span>';
+                var $finishButton = $(this.$el.find('.finishSigning')[0]);
+                if (!$finishButton.hasClass('inactive')) {
+                    $finishButton.addClass('inactive');
+                    $finishButton.off('click', this.finishDocument);
+
+                    if (hasNext){
+                        $finishButton.html('Next <span class="desktop-only-inline">Document</span>');
+                    } else {
+                        $finishButton.html('Submit <span class="desktop-only-inline">Document</span>');
+                    }
                 }
+
             },
             disableNext: function SignatureToolViewDisableNext(){
                 this.$el.find('.nextSignature').addClass('inactive');
@@ -1105,11 +1150,12 @@
                 },
                 applySignature: function MainControllerApplySignature(sig){
                     var tag = this.docs.getCurrent().get('tags').findWhere({id: this.selectedSignatureTag});
+
                     if (!this.signature) {
                         this.signature = {data: sig.get('data'), type: sig.get('type')};
-                        tag.set('signature', {data: sig.get('data'), type: sig.get('type')});
+                        tag.set('value', {data: sig.get('data'), type: sig.get('type')});
                     } else {
-                        tag.set('signature', {data: this.signature.data, type: this.signature.type});
+                        tag.set('value', {data: this.signature.data, type: this.signature.type});
                     }
 
                     this.selectedSignatureTag = null;
@@ -1142,7 +1188,7 @@
                         this.viewer.setPageTotal(this.docs.getCurrent().totalPages);
                     } else {
                         //submit the document info through a form
-                        this.viewer.submitForm(this.signature);
+//                        this.viewer.submitForm(this.signature);
                     }
                 },
                 //download the current document

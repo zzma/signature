@@ -501,15 +501,23 @@ $link-blue: #4169E1
     box-shadow: none
 
 .inputField
-  border: 2px solid #ff0000
+  &.optional
+    border: 2px solid #0000ff
+  &.required
+    border: 2px solid #ff0000
+  &.valid
+    border: 2px solid #13A31D !important
 
 .signatureField
   text-align: left
-  border: 2px solid #ff0000
+  border: 2px solid #13A31D
+
   > div
     height: 100%
   &.unsigned
     background-color: rgba(255, 0, 0, 0.3)
+    border: 2px solid #ff0000 !important
+
   &.unsigned:before
     content: 'Click here to sign'
   &.unsigned:hover
