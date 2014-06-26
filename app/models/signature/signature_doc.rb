@@ -195,35 +195,35 @@ module Signature
       #remove the current document images
       self.document_images.map(&:destroy)
 
-      #image_file = self.doc.path.gsub(/\.pdf/, '.png')
-      #
-      #line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + RES.to_s + ' -sOutputFile=:image_file :pdf_file')
-      #line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
-      #
-      #page_count = PDF::Reader.new(self.doc.path).page_count
-      #
-      #if page_count and page_count > 0
-      #  filename = image_file.gsub(/\.png/, '')
-      #  extension = '.png'
-      #  for index in (1...page_count+1)
-      #    self.document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
-      #  end
-      #end
+      image_file = self.doc.path.gsub(/\.pdf/, '.png')
 
-      image_file = self.doc.path.gsub(/\.pdf/, '')
-
-      line = Cocaine::CommandLine.new(PDFTOPPM, '-jpeg -r ' + Signature::Constants::RES.to_s + ' :pdf_file :image_file')
-      line.run(:image_file => image_file, :pdf_file => self.doc.path)
+      line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + RES.to_s + ' -sOutputFile=:image_file :pdf_file')
+      line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
 
       page_count = PDF::Reader.new(self.doc.path).page_count
 
       if page_count and page_count > 0
-        filename = image_file
-        extension = '.jpg'
+        filename = image_file.gsub(/\.png/, '')
+        extension = '.png'
         for index in (1...page_count+1)
           self.document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
         end
       end
+
+      #image_file = self.doc.path.gsub(/\.pdf/, '')
+      #
+      #line = Cocaine::CommandLine.new(PDFTOPPM, '-jpeg -r ' + Signature::Constants::RES.to_s + ' :pdf_file :image_file')
+      #line.run(:image_file => image_file, :pdf_file => self.doc.path)
+      #
+      #page_count = PDF::Reader.new(self.doc.path).page_count
+      #
+      #if page_count and page_count > 0
+      #  filename = image_file
+      #  extension = '.jpg'
+      #  for index in (1...page_count+1)
+      #    self.document_images.create(:image => File.new(filename + '-' + index.to_s + extension, 'r'), :page => index)
+      #  end
+      #end
 
 
       if self.tag_fields.present?
