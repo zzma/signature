@@ -1,5 +1,4 @@
-<%= stylesheet_link_tag "signature", :media => "all" %>
-
+<%= stylesheet_link_tag "signature", :media => "all", :id => "signatureStylesheet" %>
 
 <div class="outerViewerContainer" id="<%= 'sigDoc' + documents.first.id.to_s %>" data-signature="<%= !view_only %>">
   <div class="mainViewerContainer">
@@ -115,6 +114,8 @@
   <% end %>
 </div>
 
+<!--TODO: either force a DOM reflow once the css/link element has been loaded (hide/show) or only
+ append the DOM elements after the css has been loaded -->
 
 <%= javascript_include_tag 'signature/jquery-min.js' %>
 <%= javascript_include_tag 'signature/underscore-min.js' %>

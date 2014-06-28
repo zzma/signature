@@ -1244,6 +1244,10 @@
                         iframe.src = url;
                     }
                 },
+                reflowDOM: function MainControllerReflowDOM(){
+                    this.viewer.$el.hide();
+                    this.viewer.$el.show();
+                },
                 _docView: function MainController_DocView(index){
                     if (index !== undefined && index >= 0) {
                         return this.viewer.viewerView.docViews[index];
@@ -1272,6 +1276,16 @@
 
         $(function(){
             SignatureTool.App = new SignatureTool.MainController();
+            var styles = document.getElementById('signatureStylesheet');
+            if (styles && styles.sheet && styles.sheet.rules) {
+                console.log('Stylesheet already loaded');
+                SignatureTool.App.reflowDOM();
+            } else {
+                styles.onload = function(){
+                    console.log('Stylesheet loaded!');
+                    SignatureTool.App.reflowDOM();
+                }
+            }
         });
 
     })();
