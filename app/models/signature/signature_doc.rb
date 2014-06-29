@@ -197,7 +197,7 @@ module Signature
 
       image_file = self.doc.path.gsub(/\.pdf/, '.png')
 
-      line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + RES.to_s + ' -sOutputFile=:image_file :pdf_file')
+      line = Cocaine::CommandLine.new(GHOSTSCRIPT, '-q -dNOPAUSE -dBATCH -sDEVICE=pngalpha -r' + Signature::Constants::RES.to_s + ' -sOutputFile=:image_file :pdf_file')
       line.run(:image_file => image_file.gsub(/\.png/, '-%d.png'), :pdf_file => self.doc.path)
 
       page_count = PDF::Reader.new(self.doc.path).page_count
