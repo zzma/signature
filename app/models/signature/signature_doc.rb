@@ -237,6 +237,8 @@ module Signature
       if self.tag_fields.blank?
         tmp_csv_file = Rails.root.to_s + '/tmp/' + self.doc_file_name.gsub(/\.pdf/, '.csv')
         removeCsv = Cocaine::CommandLine.new('rm', tmp_csv_file)
+        line = Cocaine::CommandLine.new('export', 'LANG="en_US.UTF-8"')
+        line.run
 
         line = Cocaine::CommandLine.new(PDF2TXT, '-t tag -o :csv_output_file :pdf_input_file')
         begin
