@@ -155,9 +155,10 @@ module Signature
     def copy_fields(original_doc)
       if original_doc and original_doc.tag_fields.present?
         original_doc.tag_fields.each do |tf|
-          self.tag_fields.build(tf.dup)
+          new_tf = tf.dup
+          new_tf.document = self
+          new_tf.save
         end
-        self.save
       end
     end
 
