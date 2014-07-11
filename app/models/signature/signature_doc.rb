@@ -152,6 +152,15 @@ module Signature
       process_document
     end
 
+    def copy_fields(original_doc)
+      if original_doc and original_doc.tag_fields.present?
+        original_doc.tag_fields.each do |tf|
+          self.tag_fields.build(tf.dup)
+        end
+        self.save
+      end
+    end
+
     private
     # Handle tag names of the form {{!tag_name}} and parse them to tag_name
     # Logs a warning if the tag name is of improper form
@@ -237,8 +246,6 @@ module Signature
       if self.tag_fields.blank?
         tmp_csv_file = Rails.root.to_s + '/tmp/' + self.doc_file_name.gsub(/\.pdf/, '.csv')
         removeCsv = Cocaine::CommandLine.new('rm', tmp_csv_file)
-        line = Cocaine::CommandLine.new('export', 'LANG="en_US.UTF-8"')
-        line.run
 
         line = Cocaine::CommandLine.new(PDF2TXT, '-t tag -o :csv_output_file :pdf_input_file')
         begin
