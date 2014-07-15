@@ -9,6 +9,7 @@ class SignatureCreate<%= table_name.camelize.singularize %>Tags < ActiveRecord::
       t.integer :height
       t.string :tag_type
       t.integer :page
+      t.boolean :white_bg
 
       t.references :<%= file_name %>
       t.references :<%= file_name %>_image

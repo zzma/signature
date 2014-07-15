@@ -5,7 +5,7 @@ module Signature
     extend ActiveSupport::Concern
 
     included do
-      attr_accessible :height, :name, :value, :document, :document_image, :tag_type, :width, :x, :y, :page
+      attr_accessible :height, :name, :value, :document, :document_image, :tag_type, :width, :x, :y, :page, :white_bg
 
       TAG_TYPES = Signature::Constants::TAG_TYPES
       RES_SCALE = Signature::Constants::RES_SCALE

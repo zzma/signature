@@ -18,9 +18,23 @@ Or install it yourself as:
 
     $ gem install signature
 
-Also need to install pdfminer and ghostscript
+Also need to install the following dependencies: pdfminer(https://github.com/zzma/pdfminer) and ghostscript(http://www.ghostscript.com/download/)
 
 ## Usage
+
+To create a new signature document model, execute:
+
+    $ rails g signature model_name attr_1:attr_type attr_2:attr_type ...
+
+To add signature document functionality to an existing Paperclip model, execute:
+
+    $rails g signature model_name
+
+This will create models and migrations for ModelName, ModelNameImage, and ModelNameTag.
+ModelNameImage and ModelNameTag are helper models that generally should not be modified.
+To run the migrations, execute:
+
+    $ rake db:migrate
 
 ### Models
 

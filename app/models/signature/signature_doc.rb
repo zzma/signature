@@ -21,8 +21,8 @@ module Signature
       attr_accessible :signed_at, :signed_ip, :id, :doc, :has_summary
 
       # TODO: don't store in public folder - create an authenticated route for downloading files
-      # TODO? obfuscate the filename and url with https://github.com/thoughtbot/paperclip#uri-obfuscation
-
+      # TODO: obfuscate the filename and url with https://github.com/thoughtbot/paperclip#uri-obfuscation
+      # TODO: make sure this overrides the has_attached_file in the model where it is included
       has_attached_file :doc,
                         :url => "/system/:rails_env/:class/:attachment/:id/:filename"
 
@@ -31,7 +31,6 @@ module Signature
       validates_attachment_content_type :doc, :content_type => 'application/pdf'
 
       PDF2TXT = 'pdf2txt.py'
-      IMAGEMAGICK = 'convert'
       GHOSTSCRIPT = 'gs'
       PDFTOPPM = 'pdftoppm'
 
@@ -185,6 +184,15 @@ module Signature
       end
     end
 
+    # Determine whether the tag is a widget annotation tag or a pure text tag
+    def is_textual_tag(str)
+       if str.scan(/^.*\{\{(?<tag>.&)\}\}.*$/).length > 0
+         return true
+       else
+         return false
+       end
+    end
+
     # Connect a signature document's tags to its document images
     def connect_tags_to_images
       tag_fields = self.tag_fields
@@ -257,6 +265,7 @@ module Signature
           e
         end
 
+        #TODO: add ability to read a header row that allows for flexible column placement
         CSV.foreach(tmp_csv_file) do |row|
           attr = {
               page: row[0].to_i,
@@ -265,7 +274,8 @@ module Signature
               width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER),
               height: (row[4].to_f - row[2].to_f + HEIGHT_BUFFER),
               name: parse_tag_name(row[5]),
-              tag_type: get_tag_type(row[5])
+              tag_type: get_tag_type(row[5]),
+              white_bg: is_textual_tag(row[5])
           }
 
           self.tag_fields.create(attr)
@@ -297,7 +307,7 @@ module Signature
             if tag_fields.present?
               tag_fields.each do |tag|
                 pdf.canvas do
-                  if options && (options[:set_blank] || options[:blank_and_text])
+                  if options && (options[:set_blank] || options[:blank_and_text]) && tag.white_bg
                     pdf.fill_color 'ffffff'
                     pdf.fill_rectangle([tag.x, tag.y + tag.height + 3], tag.width, tag.height + 4)
                   end
@@ -335,10 +345,12 @@ module Signature
           if tag_fields.present?
             tag_fields.each do |tag|
               pdf.canvas do
-                #White rectangle to 'erase' previous signature
-                pdf.fill_color 'ffffff'
-                pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height)
-                pdf.fill_color '000000'
+                if tag.white_bg
+                  #White rectangle to 'erase' previous signature
+                  pdf.fill_color 'ffffff'
+                  pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height)
+                  pdf.fill_color '000000'
+                end
 
                 if sig_type == DRAWN_SIG
                   # Overlay the drawn signature on top of the signature field

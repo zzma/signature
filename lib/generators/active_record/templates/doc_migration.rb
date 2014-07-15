@@ -13,7 +13,6 @@ class SignatureCreate<%= table_name.camelize %> < ActiveRecord::Migration
 
       ## status field
       t.boolean :has_summary
-
       <% attributes.each do |attribute| -%>
         t.<%= attribute.type %> :<%= attribute.name %>
       <% end -%>
