@@ -186,7 +186,7 @@ module Signature
 
     # Determine whether the tag is a widget annotation tag or a pure text tag
     def is_textual_tag(str)
-       if str.scan(/^.*\{\{(?<tag>.&)\}\}.*$/).length > 0
+       if str.scan(/^.*\{\{(.*?)\}\}.*$/).length > 0
          return true
        else
          return false
