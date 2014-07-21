@@ -500,7 +500,7 @@ $link-blue: #4169E1
     cursor: default
     box-shadow: none
 
-.inputField
+.inputField, .checkboxField
   &.optional
     border: 2px solid #0000ff
   &.required
@@ -508,6 +508,13 @@ $link-blue: #4169E1
   &.valid
     border: 2px solid #13A31D !important
 
+.checkboxField
+  font-weight: 900
+  cursor: pointer
+
+  &:hover
+    filter: brightness(0.7)
+    -webkit-filter: brightness(0.7)
 .signatureField
   text-align: left
   border: 2px solid #13A31D

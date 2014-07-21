@@ -10,7 +10,7 @@ module ActiveRecord
       source_root File.expand_path("../templates", __FILE__)
 
       def copy_signature_migration
-        if (behavior == :invoke && model_exists?) || (behavior == :revoke && migration_exists?(table_name))
+        if (behavior == :invoke && migration_exists?(table_name)) || (behavior == :revoke && migration_exists?(table_name))
           migration_template "doc_migration_existing.rb", "db/migrate/add_signature_to_#{table_name}.rb"
           migration_template "doc_image_migration.rb", "db/migrate/signature_create_#{table_name.singularize}_images.rb"
           migration_template "doc_tag_migration.rb", "db/migrate/signature_create_#{table_name.singularize}_tags.rb"

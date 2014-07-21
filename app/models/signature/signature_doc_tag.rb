@@ -14,9 +14,9 @@ module Signature
         define_method("#{meth}?") { tag_type == TAG_TYPES[meth] }
       end
 
-      scope :not_signature, lambda { where("tag_type != '" + TAG_TYPES[:signature]  + "'")}
-      scope :signature, lambda { where("tag_type = '" + TAG_TYPES[:signature]  + "'")}
-
+      scope :not_signature, lambda { where("tag_type != '" + TAG_TYPES[:signature]  + "'") }
+      scope :signature, lambda { where("tag_type = '" + TAG_TYPES[:signature]  + "'") }
+      scope :interactive, lambda { where("tag_type != 'text'") } #only get interactive features
     end
 
     def scaled_attributes

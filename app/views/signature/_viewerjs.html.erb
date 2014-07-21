@@ -83,6 +83,7 @@
                 page: null,
                 name: null,
                 value: null,
+                group: null,
                 originalPosition: {
                     x: null,
                     y: null,
@@ -93,18 +94,18 @@
             },
             initialize: function TagFieldInitialize(options) {
                 if (options) {
-                    //check if the field is text, when it should be input
-                    if (options.tag_type == 'text') {
-                        if (options.name.indexOf('1') !== 0){
-                            this.set('tag_type', 'input');
-                        }
-                    }
-
                     //check if the field is optional
-                    if (options.tag_type == 'input' || this.get('tag_type') == 'input'){
+                    if (options.tag_type == 'input' || options.tag_type == 'checkbox') {
                         if (options.name.indexOf('*') === -1) {
                             this.set('optional', true);
                         }
+                    }
+
+                    //Assign group box as a checkbox with a group
+                    if (options.tag_type == 'groupbox') {
+                        this.set('tag_type', 'checkbox');
+                        this.set('group', this.getGroup());
+                        this.get('groupValid', false);
                     }
 
                     this.set('originalPosition', {
@@ -121,9 +122,24 @@
             isInput: function TagFieldIsSignature(){
                 return this.get('tag_type') == 'input';
             },
+            isCheckbox: function TagFieldIsCheckbox(){
+                return this.get('tag_type') == 'checkbox';
+            },
+            getGroup: function TagFieldGetGroup(){
+                var group = this.get('name').match(/groupbox_(.*?)_/);
+                if (group && group.length > 1) return group[1];
+                else return -1;
+            },
             isValid: function TagFieldIsValid(){
                 //simple validation that a signature or value exists
-                return !!this.get('value');
+                if (this.isCheckbox()) {
+                    if (this.get('group')) {
+                        return this.get('groupValid');
+                    } else {
+                        return this.get('value');
+                    }
+                }
+                else return !!this.get('value');
             },
             isRequired: function TagFieldIsRequired(){
                 return !this.get('optional');
@@ -141,22 +157,52 @@
             //input tag fields (aka don't have a leading exclamation point)
             add: function TagFieldsAdd(models, options){
                 models = _.reject(models, function(tag){
-                    if (tag.tag_type == 'signature') return false;
-                    if (tag.tag_type ==  'text'){
-                        if (tag.name.indexOf('!') !== 0) {
-                            tag.tag_type = 'input';
-                            return false;
-                        } else return true;
-                    } else return true;
+                    if (tag.tag_type == 'signature' ||
+                            tag.tag_type == 'input' ||
+                            tag.tag_type == 'checkbox' ||
+                            tag.tag_type == 'groupbox')
+                        return false;
+                    else return true;
                 });
 
                 Backbone.Collection.prototype.add.call(this, models, options);
+
+                //special listener for group fields
+                _.each(this.filter(function(tag){return tag.get('group');}), function(tag){
+                    this.listenTo(tag, 'change:value', this.updateGroup);
+                }, this);
             },
             signatureFields: function TagFieldsSignatureFields(){
                 return this.where({tag_type: 'signature'});
             },
             inputFields: function TagFieldInputFields(){
                 return this.where({tag_type: 'input'});
+            },
+            checkboxFields: function TagFieldCheckboxFields(){
+                return this.where({tag_type: 'checkbox'});
+            },
+            groupFields: function TagFieldGroupboxFields(groupId){
+                return this.where({group: groupId});
+            },
+            updateGroup: function TagFieldUpdateGroup(tag){
+                var groupId = tag.get('group');
+                var groupTags = this.groupFields(groupId);
+
+                // A value was selected - remove all other values in the group
+                if (tag.get('value')) {
+                    _.each(groupTags, function(gt){
+                        if (gt !== tag) {
+                            gt.set('value', false, {silent: true});
+                        }
+
+                        gt.set('groupValid', true);
+                        gt.trigger('change:groupValid');
+                    });
+                } else {
+                    _.each(groupTags, function(gt){
+                        gt.set('groupValid', false);
+                    })
+                }
             }
         });
 
@@ -200,7 +246,8 @@
                     if (!viewOnly) {
                         //only add signature and text (possibly input) fields
                         tags = _.filter(options.tags, function(tag){
-                            return (tag.tag_type == 'signature' || tag.tag_type == 'text')
+                            return (tag.tag_type == 'signature' || tag.tag_type == 'input' ||
+                                    tag.tag_type == 'checkbox' || tag.tag_type == 'groupbox')
                         });
                     }
                     this.set({
@@ -277,7 +324,7 @@
                     tag;
                 this._nextTagField = 0;
                 tag = tags.at(this._nextTagField);
-                while (this._nextTagField >= 0 && (tag.isValid() || tag.isOptional())) {
+                while (this._nextTagField >= 0 && tag && (tag.isValid() || tag.isOptional())) {
                     this._nextTagField = (this._nextTagField < tagsLength - 1) ? this._nextTagField + 1 : -1;
                     tag = tags.at(this._nextTagField);
                 }
@@ -294,6 +341,9 @@
                 _.each(this.get('tags').inputFields(), function(input){
                     var val = input.get('value');
                     if (val) data[baseTagName(input.get('name'))] = val;
+                });
+                _.each(this.get('tags').checkboxFields(), function(checkbox){
+                    data[baseTagName(checkbox.get('name'))] = checkbox.get('value');
                 });
                 return data;
             }
@@ -534,6 +584,80 @@
             }
         });
 
+        SignatureTool.CheckboxTagView = Backbone.View.extend({
+            tagName: 'div',
+            className: 'checkboxField noSelect',
+            events: {
+                'click': 'onClick',
+                'blur': 'onBlur'
+            },
+            initialize: function CheckboxViewInitialize(){
+                this.listenTo(this.model, 'scroll', this.scrollTo);
+                this.listenTo(this.model, 'change:value', this.render);
+                this.listenTo(this.model, 'change:groupValid', this.renderLite);
+
+                if (this.model.get('optional')) {
+                    this.$el.addClass('optional');
+                } else {
+                    this.$el.addClass('required');
+                }
+
+                var val = this.model.get('value');
+                if (val == 'true') {
+                    this.model.set('value', true);
+                } else {
+                    this.model.set('value', false);
+                }
+            },
+            render: function CheckboxTagViewRender(scale){
+                scale = scale || 1;
+
+                var VERT_PADDING = 0 * scale, HORIZ_PADDING = 0 * scale,
+                        DEFAULT_FONT_SIZE = this.model.get('height') * scale;
+
+                this.el.style.position = 'absolute';
+                this.el.style.bottom = (this.model.get('y') * scale + VERT_PADDING) + 'px';
+                this.el.style.left = (this.model.get('x') * scale + HORIZ_PADDING) + 'px';
+                this.el.style.height = (this.model.get('height') * scale - VERT_PADDING) + 'px';
+                this.el.style.width = (this.model.get('width') * scale - HORIZ_PADDING) + 'px';
+                this.el.style.lineHeight = Math.floor(DEFAULT_FONT_SIZE) + 'px';
+                this.el.style.fontSize = Math.floor(DEFAULT_FONT_SIZE) + 'px';
+
+                this.renderLite();
+                return this;
+            },
+            renderLite: function CheckboxTagViewRenderLite(){
+                if (this.model.isValid()) {
+                    this.$el.addClass('valid');
+                } else {
+                    this.$el.removeClass('valid');
+                }
+
+                if (this.model.get('value')) {
+                    this.el.innerHTML = '✕';
+                } else {
+                    this.el.innerHTML = '';
+                }
+            },
+            scrollTo: function CheckboxViewScrollTo(){
+                var self = this;
+                SignatureTool.scrollIntoView(this.el, {animate: true,
+                    callback: function(){
+                        self.attentionFlash();
+                    }});
+                this.el.focus();
+            },
+            onClick: function CheckboxViewClickHandler(){
+                this.model.set('value', !this.model.get('value'));
+                SignatureTool.App.getNextField();
+            },
+            onBlur: function CheckboxViewOnBlur(){
+                SignatureTool.App.getNextField();
+            },
+            attentionFlash: function CheckboxViewAttentionFlash(){
+                SignatureTool.flashAnimation(this.$el);
+            }
+        });
 
         SignatureTool.DocumentView = Backbone.View.extend({
             tagName: 'div',
@@ -561,6 +685,8 @@
                             docTag = new SignatureTool.SignatureTagView({model: tag});
                         } else if (tag.isInput()){
                             docTag = new SignatureTool.InputTagView({model: tag});
+                        } else if (tag.isCheckbox()){
+                            docTag = new SignatureTool.CheckboxTagView({model: tag});
                         }
 
                         docImage.$el.append(docTag.render().el);
@@ -978,12 +1104,13 @@
                 selectedSignatureTag: null,
                 signature: null,
                 initialize: function MainControllerInitialize(){
-                    console.log('DOM-loaded: Initializing Main Controller.');
+                    console.log('DOM loaded: Initializing Main Controller.');
                     this.docs = new SignatureTool.Documents(null, {currentIndex: 0});
                     this.viewer = new SignatureTool.SignatureToolView({collection: this.docs});
 
                     //find and read the required document / tag field data
                     this.docs.add(this.viewer.getSigJSON());
+                    this.docs.getCurrent().getNextField();
 
                     //wait until the document images have been loaded
                     var self = this;

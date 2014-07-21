@@ -9,9 +9,11 @@ module Signature
     RES = 72 * RES_SCALE # default pdf resolution is 72 dpi
 
     TAG_TYPES = {
-        signature: 'signature',
-        text: 'text',
-        checkbox: 'checkbox'
+        signature: 'signature', #signature field
+        input: 'input', #input field that a user can fill-in
+        text: 'text', #non-interactive text field
+        checkbox: 'checkbox', #interactive checkbox field
+        groupbox: 'groupbox' #interactive select one of a group
     }
   end
   module SignatureDoc
@@ -37,8 +39,8 @@ module Signature
       DRAWN_SIG = 'sig'
       TYPED_SIG = 'text'
 
-      WIDTH_BUFFER = 2 # additional width added to the tag fields
-      HEIGHT_BUFFER = -6 # additional height added to the tag fields
+      WIDTH_BUFFER = 0 # additional width added to the tag fields
+      HEIGHT_BUFFER = 0 # additional height added to the tag fields
 
       #TODO: add scopes
       #scope :signed, lambda { where("signed_at is not NULL and signed_at != ''") }
@@ -72,7 +74,7 @@ module Signature
           id: self.id,
           download_url: self.doc.url,
           images: self.document_images.map(&:image).map(&:url),
-          tags: self.tag_fields.map(&:scaled_attributes)
+          tags: self.tag_fields.interactive.map(&:scaled_attributes)
       }
     end
 
@@ -175,16 +177,22 @@ module Signature
     end
 
     # Determine tag type
-    def get_tag_type(str)
-      # TODO: add the ability to handle checkbox fields
-      if parse_tag_name(str).split(':')[-1] == 'signature'
+    def get_tag_type(tag_name, tag_type)
+      parsed_name = parse_tag_name(tag_name)
+      if parsed_name.split(':')[-1] == 'signature'
         return Signature::Constants::TAG_TYPES[:signature]
+      elsif parsed_name.include? 'checkbox'
+        return Signature::Constants::TAG_TYPES[:checkbox]
+      elsif parsed_name.include? 'groupbox'
+        return Signature::Constants::TAG_TYPES[:groupbox]
+      elsif parsed_name[0] != '!'
+        return Signature::Constants::TAG_TYPES[:input]
       else
         return Signature::Constants::TAG_TYPES[:text]
       end
     end
 
-    # Determine whether the tag is a widget annotation tag or a pure text tag
+    # Determine whether the tag is a widget annotation tag or a visible text tag
     def is_textual_tag(str)
        if str.scan(/^.*\{\{(.*?)\}\}.*$/).length > 0
          return true
@@ -271,10 +279,10 @@ module Signature
               page: row[0].to_i,
               x: row[1].to_f,
               y: row[2].to_f,
-              width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER),
-              height: (row[4].to_f - row[2].to_f + HEIGHT_BUFFER),
+              width: (row[3].to_f - row[1].to_f + WIDTH_BUFFER.to_f),
+              height: (row[4].to_f - row[2].to_f + HEIGHT_BUFFER.to_f),
               name: parse_tag_name(row[5]),
-              tag_type: get_tag_type(row[5]),
+              tag_type: get_tag_type(row[5], row[6]),
               white_bg: is_textual_tag(row[5])
           }
 
@@ -303,16 +311,25 @@ module Signature
           page_count.times do |num|
             pdf.start_new_page(:template => input, :template_page => num+1)
 
-            tag_fields = self.tag_fields.where(page: num+1)
+            tag_fields = self.tag_fields.not_signature.where(page: num+1)
             if tag_fields.present?
               tag_fields.each do |tag|
                 pdf.canvas do
                   if options && (options[:set_blank] || options[:blank_and_text]) && tag.white_bg
                     pdf.fill_color 'ffffff'
-                    pdf.fill_rectangle([tag.x, tag.y + tag.height + 3], tag.width, tag.height + 4)
+                    pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height)
                   end
 
-                  if tag.value && !(options && options[:set_blank])
+                  if tag.checkbox? || tag.groupbox?
+                    if tag.value == true || tag.value == 'true'
+                      pdf.fill_color '000000'
+                      pdf.text_box('x',
+                                   at: [tag.x, tag.y + tag.height],
+                                   height: tag.height,
+                                   size: tag.height.round,
+                                   valign: :center) if !tag.signature?
+                    end
+                  elsif tag.value && !(options && options[:set_blank])
                     pdf.fill_color '000000'
                     pdf.text_box(tag.value,
                                  at: [tag.x, tag.y + tag.height],
@@ -354,11 +371,11 @@ module Signature
 
                 if sig_type == DRAWN_SIG
                   # Overlay the drawn signature on top of the signature field
-                  pdf.image(data, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height + 2])
+                  pdf.image(data, at: [tag.x, tag.y + tag.height], fit: [tag.width, tag.height])
                 elsif sig_type == TYPED_SIG
                   # Place the typed Signature on top of the signature field
                   pdf.font("#{Rails.root}/app/assets/fonts/signature/tangerine_regular.ttf") do
-                    pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height + 2, size: tag.height + 2, valign: :center
+                    pdf.text_box data, at: [tag.x, tag.y + tag.height], height: tag.height, size: tag.height, valign: :center
                   end
                 end
               end
