@@ -95,7 +95,8 @@
             initialize: function TagFieldInitialize(options) {
                 if (options) {
                     //check if the field is optional
-                    if (options.tag_type == 'input' || options.tag_type == 'checkbox') {
+                    if (options.tag_type == 'input' || options.tag_type == 'checkbox' ||
+                            options.tag_type == 'groupbox') {
                         if (options.name.indexOf('*') === -1) {
                             this.set('optional', true);
                         }
