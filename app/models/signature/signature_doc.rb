@@ -80,7 +80,7 @@ module Signature
 
     # Apply existing tags to the signature document
     # Accepts a hash of new tags {tag_name1: value1, tag_name2: value2, ...}
-    def apply_tags(tags=nil, generate_images=true)
+    def apply_tags(tags=nil, generate_images=true, hide_boxes=false)
       if tags
         tag_fields = self.tag_fields
         tags.each do |tag_name, value|
@@ -94,6 +94,7 @@ module Signature
       end
 
       populate_tags
+      clear_boxes if hide_boxes
       generate_document_images if (generate_images)
     end
 
@@ -161,6 +162,39 @@ module Signature
           new_tf.save
         end
       end
+    end
+
+    def has_checkbox?
+      return self.tag_fields.pluck(:tag_type).include?(Signature::Constants::TAG_TYPES[:checkbox])
+    end
+
+    def clear_boxes
+      output = self.doc.path.gsub(/\.pdf/, '-clearboxes.pdf')
+      input = self.doc.path
+      page_count = PDF::Reader.new(input).page_count
+
+      begin
+        Prawn::Document.generate(output, :skip_page_creation => true) do |pdf|
+          page_count.times do |num|
+            pdf.start_new_page(:template => input, :template_page => num+1)
+
+            tag_fields = self.tag_fields.boxes.where(page: num+1)
+            if tag_fields.present?
+              tag_fields.each do |tag|
+                pdf.canvas do
+                  pdf.fill_color 'ffffff'
+                  pdf.fill_rectangle([tag.x, tag.y + tag.height], tag.width, tag.height)
+                end
+              end
+            end
+          end
+        end
+      rescue
+        puts '****SOME ERROR IN populate_tags!******'
+      end
+
+      replace_file(output, input)
+      generate_document_images
     end
 
     private

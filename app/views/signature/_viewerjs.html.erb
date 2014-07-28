@@ -1319,6 +1319,8 @@
                         this.viewer.disableSubmit(this.docs.hasNext());
                         this.page = 1;
                         this.viewer.setPageTotal(this.docs.getCurrent().totalPages);
+                        //assign the 'Next' document tag
+                        this.docs.getCurrent().getNextField();
                     } else {
                         //submit the document info through a form
                         this.viewer.submitForm(this.signature);

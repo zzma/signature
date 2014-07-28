@@ -17,6 +17,7 @@ module Signature
       scope :not_signature, lambda { where("tag_type != '" + TAG_TYPES[:signature]  + "'") }
       scope :signature, lambda { where("tag_type = '" + TAG_TYPES[:signature]  + "'") }
       scope :interactive, lambda { where("tag_type != 'text'") } #only get interactive features
+      scope :boxes, lambda { where("tag_type = '" + TAG_TYPES[:checkbox] + "' or " + "tag_type = '" + TAG_TYPES[:groupbox] + "'") }
     end
 
     def scaled_attributes
