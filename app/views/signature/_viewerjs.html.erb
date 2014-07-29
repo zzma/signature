@@ -297,7 +297,6 @@
                     if (value > 0) this._loadCount += 1;
                 }
                 if (this.loaded() && this._loadCallback) this._loadCallback();
-                console.log('loadcount: ' + this._loadCount);
             },
             onload: function DocumentOnLoad(callback) {
                 this._loadCallback = callback;
@@ -420,8 +419,6 @@
                 //preload the image and set the original width
                 var img = new Image(), self = this;
                 img.onload = function(){
-                    console.log('Image loaded');
-                    console.log(this);
                     self.model.set('originalWidth', this.width);
                 }
                 img.src = this.model.get('url');
@@ -1124,7 +1121,6 @@
 
                     //find and read the required document / tag field data
                     this.docs.add(this.viewer.getSigJSON());
-                    this.docs.getCurrent().getNextField();
 
                     //wait until the document images have been loaded
                     var self = this;
@@ -1133,6 +1129,8 @@
                         self.setScale(DEFAULT_SCALE);
                         //initialize paging
                         self.initializePages();
+                        //initialize next document
+                        self.docs.getCurrent().getNextField();
                     });
 
                     this.viewer.enableNext();
