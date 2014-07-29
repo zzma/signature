@@ -281,15 +281,23 @@
 
                 var self = this;
                 this.get('images').each(function(image){
-                    self.listenTo(image, 'change:originalWidth', self.updateLoad)
+                    //check images that have already been loaded
+                    if (image.get('originalWidth') > 0) {
+                        self._loadCount +=1;
+                    } else {
+                        self.listenTo(image, 'change:originalWidth', self.updateLoad)
+                    }
                 });
+                this.updateLoad();
             },
             firstImageWidth: function DocumentFirstImageWidth(){
                 return this.get('images').at(0).get('originalWidth');
             },
             updateLoad: function DocumentUpdateLoad(model, value){
-                this.stopListening(model, 'change:originalWidth');
-                if (value > 0) this._loadCount += 1;
+                if (model && value) {
+                    this.stopListening(model, 'change:originalWidth');
+                    if (value > 0) this._loadCount += 1;
+                }
                 if (this.loaded() && this._loadCallback) this._loadCallback();
             },
             onload: function DocumentOnLoad(callback) {
@@ -1051,8 +1059,12 @@
             var offsetX = element.offsetLeft + element.clientLeft;
             if (!parent) {
                 console.warn('offsetParent is not set -- cannot scroll');
+                setTimeout(function(){
+                    SignatureTool.scrollIntoView(element, options);
+                }, 200);
                 return;
             }
+
             while (parent.clientHeight === parent.scrollHeight) {
                 if (parent.dataset._scaleY) {
                     offsetY /= parent.dataset._scaleY;
@@ -1406,14 +1418,13 @@
 
 
         $(function(){
-            SignatureTool.App = new SignatureTool.MainController();
             var styles = document.getElementById('signatureStylesheet');
             if (styles && styles.sheet && styles.sheet.rules) {
-                console.log('Stylesheet already loaded');
+                SignatureTool.App = new SignatureTool.MainController();
                 SignatureTool.App.reflowDOM();
             } else {
                 styles.onload = function(){
-                    console.log('Stylesheet loaded!');
+                    SignatureTool.App = new SignatureTool.MainController();
                     SignatureTool.App.reflowDOM();
                 }
             }
