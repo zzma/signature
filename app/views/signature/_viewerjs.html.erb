@@ -208,10 +208,8 @@
         });
 
         SignatureTool.DocumentImage = Backbone.Model.extend({
-            defaults: function DocumentImageDefaults(){
-                return {
-                    originalWidth: 0
-                }
+            defaults: {
+                originalWidth: 0
             },
             initialize: function DocumentImageInitialize(options){
                 if (options) {
@@ -299,13 +297,14 @@
                     if (value > 0) this._loadCount += 1;
                 }
                 if (this.loaded() && this._loadCallback) this._loadCallback();
+                console.log('loadcount: ' + this._loadCount);
             },
             onload: function DocumentOnLoad(callback) {
                 this._loadCallback = callback;
                 if (this.loaded()) this._loadCallback();
             },
             loaded: function DocumentLoaded() {
-                return this._loadCount == this.totalPages;
+                return this._loadCount === this.totalPages;
             },
             get page(){
                 return this._currentPageNumber;
@@ -421,6 +420,8 @@
                 //preload the image and set the original width
                 var img = new Image(), self = this;
                 img.onload = function(){
+                    console.log('Image loaded');
+                    console.log(this);
                     self.model.set('originalWidth', this.width);
                 }
                 img.src = this.model.get('url');
