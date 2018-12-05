@@ -17,3 +17,5 @@ spec/reports
 .sass-cache/
 log/*.log
 pkg/
+
+*.log
